@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* cores base */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* mantém primary sólido para compatibilidade (um azul “Apple”) */
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+
+    --primary-from: 213 94% 68%; 
+    --primary-to:   224 76% 55%; 
+    --primary-vignette: 217 92% 60% / 0.15; 
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    /* fundo com leve “paper blue” */
+    @apply text-foreground;
+    background:
+      radial-gradient(60rem 40rem at 20% -10%, hsl(213 94% 92%) 0%, transparent 60%),
+      radial-gradient(50rem 30rem at 100% 10%, hsl(220 90% 96%) 0%, transparent 55%),
+      linear-gradient(to bottom right, #f8fbff, #ffffff);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary-from)) 0%,
+      hsl(var(--primary-to)) 100%
+    );
+  }
+
+  .text-gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary-from)) 0%,
+      hsl(var(--primary-to)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-all
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           text-white ring-offset-background;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary-from)) 0%,
+      hsl(var(--primary-to)) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.35),
+      0 1px 1px rgba(0,0,0,.06);
+  }
+  .btn-primary:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.45),
+      0 4px 14px rgba(16, 112, 255, .18);
+    background-image:
+      radial-gradient(60% 120% at 50% -20%, hsl(var(--primary-vignette)) 0%, transparent 70%),
+      linear-gradient(135deg, hsl(var(--primary-from)) 0%, hsl(var(--primary-to)) 100%);
+    transform: translateY(-0.5px);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.25),
+      0 2px 8px rgba(16, 112, 255, .14);
+  }
+  .btn-primary:disabled {
+    @apply opacity-60 pointer-events-none;
+  }
+
+  .card-glass {
+    @apply rounded-2xl border;
+    background: linear-gradient(to bottom right, rgba(255,255,255,.7), rgba(255,255,255,.55));
+    backdrop-filter: saturate(140%) blur(8px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 10px 30px rgba(16, 112, 255, .06);
+  }
+}

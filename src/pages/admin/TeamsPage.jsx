@@ -1,36 +1,47 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { api } from '@/lib/api';
 import useAuth from '@/store/auth';
+
+const hospitalLabel = (h) => (h?.sigla || h?.name || h?.huf || h?.uo || '');
 
 const TeamsManagement = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
   const [teams, setTeams] = useState([]);
+  const [sectors, setSectors] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', sectorIds: [] });
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-  useEffect(() => { loadTeams(); }, []);
+  // ui do seletor de setores
+  const [sectorPickerOpen, setSectorPickerOpen] = useState(false);
+  const [sectorQuery, setSectorQuery] = useState('');
 
-  async function loadTeams() {
+  useEffect(() => { loadAll(); }, []);
+
+  async function loadAll() {
     try {
       setLoading(true);
-      const data = await api.get('/teams'); // GET (livre)
-      setTeams(Array.isArray(data) ? data : []);
+      const [t, s] = await Promise.all([api.get('/teams'), api.get('/sectors')]);
+      setTeams(Array.isArray(t) ? t : []);
+      setSectors(Array.isArray(s) ? s : []);
     } catch (e) {
       toast({
-        title: 'Erro ao carregar equipes',
+        title: 'Erro ao carregar dados',
         description: e?.response?.data?.message || e?.message || '',
         variant: 'destructive',
       });
@@ -41,13 +52,17 @@ const TeamsManagement = () => {
 
   function openNew() {
     setEditingTeam(null);
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', sectorIds: [] });
     setIsDialogOpen(true);
   }
 
   function openEdit(team) {
     setEditingTeam(team);
-    setFormData({ name: team.name || '', description: team.description || '' });
+    setFormData({
+      name: team.name || '',
+      description: team.description || '',
+      sectorIds: (team.sectors || []).map(s => String(s.id)),
+    });
     setIsDialogOpen(true);
   }
 
@@ -61,29 +76,31 @@ const TeamsManagement = () => {
       });
       return;
     }
-    if (!formData.name.trim()) return;
+    const name = formData.name.trim();
+    if (!name) return;
 
     try {
       setLoadingSubmit(true);
+      const payload = {
+        name,
+        description: formData.description?.trim() || null,
+        sectorIds: Array.from(new Set((formData.sectorIds || []).map(String))), // dedup
+      };
+
       if (editingTeam) {
-        await api.put(`/teams/${editingTeam.id}`, {
-          name: formData.name.trim(),
-          description: formData.description?.trim() || null,
-        });
+        await api.put(`/teams/${editingTeam.id}`, payload);
         toast({ title: 'Equipe atualizada com sucesso!' });
       } else {
-        await api.post('/teams', {
-          name: formData.name.trim(),
-          description: formData.description?.trim() || null,
-        });
+        await api.post('/teams', payload);
         toast({ title: 'Equipe criada com sucesso!' });
       }
-      // Garante que a lista reflete o backend
-      await loadTeams();
-      // Fecha e reseta
+
+      await loadAll(); // reflete backend
       setIsDialogOpen(false);
       setEditingTeam(null);
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', sectorIds: [] });
+      setSectorPickerOpen(false);
+      setSectorQuery('');
     } catch (e) {
       toast({
         title: 'Erro ao salvar equipe',
@@ -109,7 +126,7 @@ const TeamsManagement = () => {
 
     try {
       await api.del(`/teams/${id}`);
-      await loadTeams();
+      await loadAll();
       toast({ title: 'Equipe removida com sucesso!' });
     } catch (e) {
       toast({
@@ -120,14 +137,36 @@ const TeamsManagement = () => {
     }
   }
 
-  // Fecha modal e reseta form quando usuário clicar fora/ESC
   function handleOpenChange(open) {
     setIsDialogOpen(open);
     if (!open) {
       setEditingTeam(null);
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', sectorIds: [] });
+      setSectorPickerOpen(false);
+      setSectorQuery('');
     }
   }
+
+  // --------- filtros locais no seletor de setores ---------
+  const filteredSectors = useMemo(() => {
+    const q = sectorQuery.trim().toLowerCase();
+    if (!q) return sectors;
+    return sectors.filter(s => {
+      const base = `${s.name || ''} ${hospitalLabel(s.hospital)}`.toLowerCase();
+      return base.includes(q);
+    });
+  }, [sectorQuery, sectors]);
+
+  const toggleSector = (id) => {
+    setFormData(prev => {
+      const sid = String(id);
+      const exists = prev.sectorIds.includes(sid);
+      return {
+        ...prev,
+        sectorIds: exists ? prev.sectorIds.filter(x => x !== sid) : [...prev.sectorIds, sid],
+      };
+    });
+  };
 
   if (!isAdmin) {
     return (
@@ -153,7 +192,7 @@ const TeamsManagement = () => {
               <DialogTitle>{editingTeam ? 'Editar' : 'Nova'} Equipe</DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome da Equipe</Label>
                 <Input
@@ -175,6 +214,91 @@ const TeamsManagement = () => {
                 />
               </div>
 
+              {/* Seletor de Serviços/Setores (multi) */}
+              <div className="space-y-2">
+                <Label>Serviços (Setores) vinculados</Label>
+                <Popover open={sectorPickerOpen} onOpenChange={setSectorPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline" className="w-full justify-between">
+                      {formData.sectorIds.length
+                        ? `${formData.sectorIds.length} selecionado(s)`
+                        : 'Selecionar serviços'}
+                      <ChevronDown className="w-4 h-4 opacity-70" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[420px] p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Search className="w-4 h-4 text-gray-500" />
+                      <Input
+                        placeholder="Buscar serviço/hospital…"
+                        value={sectorQuery}
+                        onChange={(e) => setSectorQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                      {filteredSectors.map((s) => {
+                        const checked = formData.sectorIds.includes(String(s.id));
+                        return (
+                          <label
+                            key={String(s.id)}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => toggleSector(String(s.id))}
+                            />
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-800">{s.name}</div>
+                              <div className="text-xs text-gray-500">
+                                {s.hospital ? hospitalLabel(s.hospital) : 'Sem hospital'}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                      {filteredSectors.length === 0 && (
+                        <div className="text-xs text-gray-500 p-2">Nenhum serviço encontrado.</div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button type="button" variant="outline" onClick={() => setSectorPickerOpen(false)}>
+                        Fechar
+                      </Button>
+                      <Button type="button" onClick={() => setSectorPickerOpen(false)}>
+                        Aplicar
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Chips dos setores selecionados */}
+                {formData.sectorIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {formData.sectorIds.map((sid) => {
+                      const s = sectors.find(x => String(x.id) === String(sid));
+                      if (!s) return null;
+                      return (
+                        <span
+                          key={sid}
+                          className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-3 py-1 text-xs"
+                          title={s.hospital ? hospitalLabel(s.hospital) : 'Sem hospital'}
+                        >
+                          {s.name}
+                          <button
+                            type="button"
+                            onClick={() => toggleSector(sid)}
+                            className="hover:text-blue-900"
+                            aria-label="Remover"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <Button type="submit" className="w-full" disabled={!formData.name.trim() || loadingSubmit}>
                 {loadingSubmit ? 'Salvando...' : editingTeam ? 'Atualizar' : 'Criar'} Equipe
               </Button>
@@ -191,8 +315,8 @@ const TeamsManagement = () => {
             key={team.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-blue-100"
+            transition={{ delay: index * 0.06 }}
+            className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-blue-100 h-full flex flex-col"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -206,7 +330,27 @@ const TeamsManagement = () => {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            {/* lista de setores */}
+            <div className="mb-4 space-y-2">
+              <p className="text-xs font-semibold text-gray-500">Serviços vinculados</p>
+              {Array.isArray(team.sectors) && team.sectors.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {team.sectors.map((s) => (
+                    <span
+                      key={String(s.id)}
+                      className="inline-flex items-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 rounded-full px-3 py-1 text-xs"
+                      title={s.hospital ? hospitalLabel(s.hospital) : 'Sem hospital'}
+                    >
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">Nenhum serviço vinculado</p>
+              )}
+            </div>
+
+            <div className="mt-auto flex gap-2">
               <Button
                 variant="outline"
                 size="sm"

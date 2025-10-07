@@ -20,6 +20,8 @@ const routes = [
   { to: 'people',     label: 'Pessoas',      icon: UserCog },
   { to: 'teams',      label: 'Equipes',      icon: Users },
   { to: 'time-slots', label: 'Horários',     icon: Clock },
+
+  { to: 'hospitals',    label: 'HUF',      icon: Building },
   { to: 'sectors',    label: 'Serviços',      icon: Building },
   { to: 'users',      label: 'Usuários',     icon: Users },
   { to: 'about',      label: 'Sobre',        icon: LayoutDashboard }, // troque para 'panel' se for o primeiro

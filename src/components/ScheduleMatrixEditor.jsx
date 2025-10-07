@@ -18,7 +18,7 @@ import { X, Users } from 'lucide-react';
  *   onAssignmentChange(day:number, timeSlotId:string, personId:string|null)
  *   onPeopleVisibleChange?(selectedIds:string[])
  *   holidayDates?: string[] // 'YYYY-MM-DD'
- *   dense?: boolean // força modo compacto (mantido aqui sempre true por padrão de UI)
+ *   dense?: boolean
  */
 const ScheduleMatrixEditor = ({
   month,
@@ -53,6 +53,15 @@ const ScheduleMatrixEditor = ({
     timeSlotId: e.timeSlotId != null ? String(e.timeSlotId) : undefined,
   }));
 
+
+const [peopleQuery, setPeopleQuery] = useState('');
+const listPeople = useMemo(() => {
+  const q = peopleQuery.trim().toLowerCase();
+  if (!q) return normPeopleAll;
+  return normPeopleAll.filter(p => p.name.toLowerCase().includes(q));
+}, [peopleQuery, normPeopleAll]);
+
+
   // ===== Datas e auxiliares =====
   const [year, monthIndex] = month.split('-').map(Number);
   const daysInMonth = new Date(year, monthIndex, 0).getDate();
@@ -76,7 +85,7 @@ const ScheduleMatrixEditor = ({
     return (letters || desc || '').slice(0, 3);
   };
 
-  // ===== Paleta (usar idêntica ao PDF/XLSX) =====
+  // ===== Paleta (alinhada com PDF/XLSX) =====
   const COLOR_MAP = {
     SN: { badge: 'bg-blue-100 text-blue-800', cell: 'bg-blue-100/90 text-blue-800', border: 'border-blue-200' },
     SD: { badge: 'bg-amber-100 text-amber-800', cell: 'bg-amber-100/90 text-amber-800', border: 'border-amber-200' },
@@ -122,7 +131,7 @@ const ScheduleMatrixEditor = ({
     if (currentSlot) onAssignmentChange?.(Number(day), String(currentSlot), null);
   };
 
-  // ===== Seleção de linhas (pessoas) =====
+  // ===== Seleção de linhas =====
   const [selectedIds, setSelectedIds] = useState(() => normPeopleAll.map(p => p.id));
   const togglePerson = (id) => {
     setSelectedIds(prev => {
@@ -134,8 +143,8 @@ const ScheduleMatrixEditor = ({
   const normPeople = normPeopleAll.filter(p => selectedIds.includes(p.id));
 
   // ===== Dimensões compactas =====
-  const nameColMin = 210; // coluna de nomes
-  const dayColMin = 36;   // minimizar pra caber sem scroll
+  const nameColMin = 210;
+  const dayColMin = 36;
   const cellH = 28;
 
   return (
@@ -146,24 +155,56 @@ const ScheduleMatrixEditor = ({
           <Users className="w-4 h-4" />
           {normPeople.length} {normPeople.length === 1 ? 'colaborador' : 'colaboradores'} exibido(s)
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">Selecionar pessoas</Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-2">
-            <div className="max-h-64 overflow-y-auto space-y-1">
-              {normPeopleAll.map(p => {
-                const checked = selectedIds.includes(p.id);
-                return (
-                  <label key={p.id} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
-                    <Checkbox checked={checked} onCheckedChange={() => togglePerson(p.id)} />
-                    <span className="text-sm">{p.name}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
+       <Popover>
+  <PopoverTrigger asChild>
+    <Button variant="outline" size="sm">Selecionar pessoas</Button>
+  </PopoverTrigger>
+
+  <PopoverContent
+    // posicionamento
+    side="bottom"
+    align="end"
+    sideOffset={8}
+    className="w-80 p-0 max-h-[70vh] overflow-y-auto overscroll-contain"
+    // evita briga de scroll com o Dialog "de trás"
+    onWheel={(e) => e.stopPropagation()}
+    onTouchMove={(e) => e.stopPropagation()}
+    // evita auto-focus estourar o viewport
+    onOpenAutoFocus={(e) => e.preventDefault()}
+  >
+    {/* Barra de busca fica fixa */}
+    <div className="sticky top-0 z-10 bg-popover border-b p-2">
+      <input
+        type="text"
+        value={peopleQuery}
+        onChange={(e) => setPeopleQuery(e.target.value)}
+        placeholder="Buscar por nome..."
+        className="w-full px-3 py-2 border rounded-md text-sm"
+      />
+    </div>
+
+    {/* Lista (o Content já rola) */}
+    <div className="p-2 space-y-1">
+      {listPeople.length === 0 && (
+        <div className="text-xs text-gray-500 px-2 py-1">Nenhum resultado</div>
+      )}
+
+      {listPeople.map(p => {
+        const checked = selectedIds.includes(p.id);
+        return (
+          <label
+            key={p.id}
+            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+          >
+            <Checkbox checked={checked} onCheckedChange={() => togglePerson(p.id)} />
+            <span className="text-sm">{p.name}</span>
+          </label>
+        );
+      })}
+    </div>
+  </PopoverContent>
+</Popover>
+
       </div>
 
       <div className="overflow-x-auto">
@@ -237,7 +278,7 @@ const ScheduleMatrixEditor = ({
                               "w-full",
                               "rounded-md border text-[0.7rem] leading-none",
                               "transition-colors",
-                              "h-7", // 28px
+                              "h-7",
                               code
                                 ? `${palette.cell} ${palette.border} font-semibold`
                                 : "bg-white text-gray-500 border-slate-200 hover:border-blue-300"
@@ -262,7 +303,7 @@ const ScheduleMatrixEditor = ({
                               </SelectTrigger>
                               <SelectContent>
                                 {normSlots.map((s) => {
-                                  const occupiedBy = slotsMap[s.id]; // personId ou null
+                                  const occupiedBy = slotsMap[s.id];
                                   const isTakenByOther = occupiedBy && String(occupiedBy) !== String(person.id);
                                   return (
                                     <SelectItem

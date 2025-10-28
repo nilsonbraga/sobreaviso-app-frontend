@@ -12,7 +12,6 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* mantém primary sólido para compatibilidade (um azul “Apple”) */
     --primary: 217 91% 60%;
     --primary-foreground: 210 40% 98%;
 

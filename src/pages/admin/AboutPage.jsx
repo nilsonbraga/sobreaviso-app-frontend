@@ -11,8 +11,6 @@ function PrimaryLinkButton({ to, icon: Icon, children }) {
   const content = (
     <Button
       className="w-full h-11 justify-start"
-      // variant default = seu "primary" azul (igual ao screenshot)
-      // se no seu projeto o primary for outro, troque para variant="default"
     >
       {Icon && <Icon className="w-4 h-4 mr-2" />}
       {children}
@@ -27,7 +25,6 @@ export default function AdminPanelPage() {
   return (
     <div className="min-h-screen">
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Intro */}
         <section className="rounded-xl bg-white ring-1 ring-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <Info className="w-4 h-4 text-sky-600" />
@@ -41,13 +38,12 @@ export default function AdminPanelPage() {
             <p className="text-sm">
               <span className="inline-flex items-center gap-2 rounded-md px-2 py-1 bg-sky-50 text-sky-800 ring-1 ring-sky-100">
                 <ShieldCheck className="w-4 h-4" />
-                Idealizado para gerenciar as escalas de sobreaviso da <strong>EBSERH</strong> pelo <strong>SETISD do CH-UFC</strong>.
+                Idealizado para gerenciar as escalas de plantão e sobreaviso da <strong>EBSERH</strong> pelo <strong>SETISD do CH-UFC</strong>.
               </span>
             </p>
           </div>
         </section>
 
-        {/* Ações rápidas — todos como PRIMARY padrão */}
         <section className="rounded-xl bg-white ring-1 ring-slate-200">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-sky-600" />
@@ -75,7 +71,6 @@ export default function AdminPanelPage() {
           </div>
         </section>
 
-        {/* Passo a passo com azuis suaves */}
         <section className="rounded-xl bg-white ring-1 ring-slate-200">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <LayoutDashboard className="w-4 h-4 text-sky-600" />

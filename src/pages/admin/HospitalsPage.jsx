@@ -16,16 +16,14 @@ const HospitalManagement = () => {
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // modal
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  // ui state
-  const [view, setView] = useState('cards'); // 'cards' | 'table'
+  const [view, setView] = useState('cards'); 
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState('huf'); // 'huf' | 'uo' | 'createdAt'
-  const [sortDir, setSortDir] = useState('asc'); // 'asc' | 'desc'
+  const [sortKey, setSortKey] = useState('huf'); 
+  const [sortDir, setSortDir] = useState('asc'); 
 
   async function load() {
     try {
@@ -111,7 +109,6 @@ const HospitalManagement = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 className="text-3xl font-bold text-gray-800">Gerenciar Hospitais</h2>
@@ -150,14 +147,13 @@ const HospitalManagement = () => {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Novo'} Hospital</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="grid gap-4">
-                {/* Campos em coluna, full width */}
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label>HUF</Label>
                     <Input
                       value={form.huf}
                       onChange={e => setForm(prev => ({ ...prev, huf: e.target.value }))}
-                      placeholder="Ex: HUF-01"
+                      placeholder="Ex: CH DA UNIVERSIDADE FEDERAL DO ..."
                     />
                   </div>
                   <div className="space-y-2">
@@ -165,7 +161,7 @@ const HospitalManagement = () => {
                     <Input
                       value={form.uo}
                       onChange={e => setForm(prev => ({ ...prev, uo: e.target.value }))}
-                      placeholder="Ex: 123456"
+                      placeholder="Ex: CH-..."
                     />
                   </div>
                 </div>
@@ -180,14 +176,12 @@ const HospitalManagement = () => {
         </div>
       </div>
 
-      {/* Alternador de visualização */}
       <Tabs value={view} onValueChange={setView} className="space-y-4">
         <TabsList>
           <TabsTrigger value="cards" className="gap-1"><LayoutGrid className="w-4 h-4" /> Cards</TabsTrigger>
           <TabsTrigger value="table" className="gap-1"><Table className="w-4 h-4" /> Tabela</TabsTrigger>
         </TabsList>
 
-        {/* CARDS */}
         <TabsContent value="cards">
           {loading ? (
             <div className="text-sm text-gray-500">Carregando hospitais...</div>
@@ -206,7 +200,6 @@ const HospitalManagement = () => {
                     <p className="text-xs text-gray-500">{h.uo ? `UO: ${h.uo}` : 'UO: —'}</p>
                   </div>
 
-                  {/* Botões sempre embaixo */}
                   <div className="mt-auto pt-4 flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEdit(h)} className="flex-1">
                       <Edit className="w-4 h-4 mr-1" />
@@ -226,7 +219,6 @@ const HospitalManagement = () => {
           )}
         </TabsContent>
 
-        {/* TABELA */}
         <TabsContent value="table">
           <div className="bg-white rounded-2xl shadow p-4">
             {loading ? (

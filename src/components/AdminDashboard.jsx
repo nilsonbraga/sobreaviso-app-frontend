@@ -32,13 +32,13 @@ const AdminDashboard = ({ user, onLogout }) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'on-duty':   return <OnDutyPreview />;                  // GET /api/public/today
-      case 'schedules': return <ScheduleManagement user={user} />; // /api/schedules + combos
-      case 'people':    return <PeopleManagement user={user} />;   // /api/people
-      case 'teams':     return <TeamsManagement user={user} />;    // /api/teams
-      case 'sectors':   return isAdmin ? <SectorManagement /> : null; // /api/sectors
-      case 'users':     return isAdmin ? <UsersManagement /> : null;  // /api/users
-      case 'timeslots': return <TimeSlotManagement user={user} />; // /api/timeslots
+      case 'on-duty':   return <OnDutyPreview />;                  
+      case 'schedules': return <ScheduleManagement user={user} />; 
+      case 'people':    return <PeopleManagement user={user} />;  
+      case 'teams':     return <TeamsManagement user={user} />;   
+      case 'sectors':   return isAdmin ? <SectorManagement /> : null; 
+      case 'users':     return isAdmin ? <UsersManagement /> : null;  
+      case 'timeslots': return <TimeSlotManagement user={user} />; 
       default:          return null;
     }
   };

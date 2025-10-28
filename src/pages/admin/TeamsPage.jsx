@@ -27,7 +27,6 @@ const TeamsManagement = () => {
   const [formData, setFormData] = useState({ name: '', description: '', sectorIds: [] });
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-  // ui do seletor de setores
   const [sectorPickerOpen, setSectorPickerOpen] = useState(false);
   const [sectorQuery, setSectorQuery] = useState('');
 
@@ -84,7 +83,7 @@ const TeamsManagement = () => {
       const payload = {
         name,
         description: formData.description?.trim() || null,
-        sectorIds: Array.from(new Set((formData.sectorIds || []).map(String))), // dedup
+        sectorIds: Array.from(new Set((formData.sectorIds || []).map(String))), 
       };
 
       if (editingTeam) {
@@ -95,7 +94,7 @@ const TeamsManagement = () => {
         toast({ title: 'Equipe criada com sucesso!' });
       }
 
-      await loadAll(); // reflete backend
+      await loadAll(); 
       setIsDialogOpen(false);
       setEditingTeam(null);
       setFormData({ name: '', description: '', sectorIds: [] });
@@ -147,7 +146,6 @@ const TeamsManagement = () => {
     }
   }
 
-  // --------- filtros locais no seletor de setores ---------
   const filteredSectors = useMemo(() => {
     const q = sectorQuery.trim().toLowerCase();
     if (!q) return sectors;
@@ -214,7 +212,6 @@ const TeamsManagement = () => {
                 />
               </div>
 
-              {/* Seletor de Serviços/Setores (multi) */}
               <div className="space-y-2">
                 <Label>Serviços (Setores) vinculados</Label>
                 <Popover open={sectorPickerOpen} onOpenChange={setSectorPickerOpen}>
@@ -271,7 +268,6 @@ const TeamsManagement = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* Chips dos setores selecionados */}
                 {formData.sectorIds.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {formData.sectorIds.map((sid) => {
@@ -330,7 +326,6 @@ const TeamsManagement = () => {
               </div>
             </div>
 
-            {/* lista de setores */}
             <div className="mb-4 space-y-2">
               <p className="text-xs font-semibold text-gray-500">Serviços vinculados</p>
               {Array.isArray(team.sectors) && team.sectors.length > 0 ? (

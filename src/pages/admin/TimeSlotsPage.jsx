@@ -30,7 +30,7 @@ const TimeSlotManagement = () => {
   async function loadTimeSlots() {
     try {
       setLoading(true);
-      const data = await api.get('/timeslots'); // GET (livre)
+      const data = await api.get('/timeslots'); 
       setTimeSlots(Array.isArray(data) ? data : []);
     } catch (e) {
       toast({
@@ -82,7 +82,6 @@ const TimeSlotManagement = () => {
     try {
       setSaving(true);
 
-      // payload simples (backend aceita turnos overnight, não validamos aqui)
       const payload = {
         description: formData.description.trim(),
         startTime: formData.startTime,

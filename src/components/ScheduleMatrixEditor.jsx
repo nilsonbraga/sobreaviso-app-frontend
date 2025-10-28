@@ -1,25 +1,16 @@
-import React, { useMemo, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { X, Users } from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X, Users } from "lucide-react";
 
-/**
- * Editor em TABELA/MATRIZ (compacto) para atribuir horários:
- * - Linhas: pessoas da equipe (selecionáveis)
- * - Colunas: dias do mês (sábado/domingo/feriado com fundo cinza claro)
- *
- * Props:
- *   month: 'YYYY-MM'
- *   entries: [{ day:number, timeSlotId:string, personId:string }]
- *   people: [{ id, name, role?, teamId? }]
- *   timeSlots: [{ id, description, startTime, endTime }]
- *   onAssignmentChange(day:number, timeSlotId:string, personId:string|null)
- *   onPeopleVisibleChange?(selectedIds:string[])
- *   holidayDates?: string[] // 'YYYY-MM-DD'
- *   dense?: boolean
- */
 const ScheduleMatrixEditor = ({
   month,
   entries = [],
@@ -40,57 +31,78 @@ const ScheduleMatrixEditor = ({
 
   // ===== Normalizações =====
   const normPeopleAll = (people || [])
-    .filter(p => p && p.id != null)
-    .map(p => ({ ...p, id: String(p.id), name: String(p.name || '') }));
+    .filter((p) => p && p.id != null)
+    .map((p) => ({ ...p, id: String(p.id), name: String(p.name || "") }));
 
   const normSlots = (timeSlots || [])
-    .filter(ts => ts && ts.id != null)
-    .map(ts => ({ ...ts, id: String(ts.id), description: String(ts.description || '') }));
+    .filter((ts) => ts && ts.id != null)
+    .map((ts) => ({
+      ...ts,
+      id: String(ts.id),
+      description: String(ts.description || ""),
+    }));
 
-  const normEntries = (entries || []).map(e => ({
+  const normEntries = (entries || []).map((e) => ({
     day: Number(e.day),
     personId: e.personId != null ? String(e.personId) : undefined,
     timeSlotId: e.timeSlotId != null ? String(e.timeSlotId) : undefined,
   }));
 
-
-const [peopleQuery, setPeopleQuery] = useState('');
-const listPeople = useMemo(() => {
-  const q = peopleQuery.trim().toLowerCase();
-  if (!q) return normPeopleAll;
-  return normPeopleAll.filter(p => p.name.toLowerCase().includes(q));
-}, [peopleQuery, normPeopleAll]);
-
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const listPeople = useMemo(() => {
+    const q = peopleQuery.trim().toLowerCase();
+    if (!q) return normPeopleAll;
+    return normPeopleAll.filter((p) => p.name.toLowerCase().includes(q));
+  }, [peopleQuery, normPeopleAll]);
 
   // ===== Datas e auxiliares =====
-  const [year, monthIndex] = month.split('-').map(Number);
+  const [year, monthIndex] = month.split("-").map(Number);
   const daysInMonth = new Date(year, monthIndex, 0).getDate();
-  const weekInitial = (d) => ['D','S','T','Q','Q','S','S'][new Date(year, monthIndex - 1, d).getDay()];
+  const weekInitial = (d) =>
+    ["D", "S", "T", "Q", "Q", "S", "S"][new Date(year, monthIndex - 1, d).getDay()];
   const isWeekend = (d) => {
     const wd = new Date(year, monthIndex - 1, d).getDay();
     return wd === 0 || wd === 6; // Dom ou Sáb
   };
   const holidaySet = new Set((holidayDates || []).map(String));
   const isHoliday = (d) => {
-    const mm = String(monthIndex).padStart(2, '0');
-    const dd = String(d).padStart(2, '0');
+    const mm = String(monthIndex).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
     return holidaySet.has(`${year}-${mm}-${dd}`);
   };
 
   // Sigla ignorando "e"/"&"
   const shortCode = (desc) => {
-    const parts = String(desc).trim().split(/\s+|[/\-–—]+/g);
-    const filtered = parts.filter(w => w && !/^e$/i.test(w) && w !== '&');
-    const letters = filtered.map(w => w[0]?.toUpperCase()).join('');
-    return (letters || desc || '').slice(0, 3);
+    const parts = String(desc)
+      .trim()
+      .split(/\s+|[/\-–—]+/g);
+    const filtered = parts.filter((w) => w && !/^e$/i.test(w) && w !== "&");
+    const letters = filtered.map((w) => w[0]?.toUpperCase()).join("");
+    return (letters || desc || "").slice(0, 3);
   };
 
   // ===== Paleta (alinhada com PDF/XLSX) =====
   const COLOR_MAP = {
-    SN: { badge: 'bg-blue-100 text-blue-800', cell: 'bg-blue-100/90 text-blue-800', border: 'border-blue-200' },
-    SD: { badge: 'bg-amber-100 text-amber-800', cell: 'bg-amber-100/90 text-amber-800', border: 'border-amber-200' },
-    SDN:{ badge: 'bg-violet-100 text-violet-800', cell: 'bg-violet-100/90 text-violet-800', border: 'border-violet-200' },
-    DEFAULT: { badge: 'bg-slate-100 text-slate-800', cell: 'bg-slate-100/80 text-slate-800', border: 'border-slate-200' },
+    SN: {
+      badge: "bg-blue-100 text-blue-800",
+      cell: "bg-blue-100/90 text-blue-800",
+      border: "border-blue-200",
+    },
+    SD: {
+      badge: "bg-amber-100 text-amber-800",
+      cell: "bg-amber-100/90 text-amber-800",
+      border: "border-amber-200",
+    },
+    SDN: {
+      badge: "bg-violet-100 text-violet-800",
+      cell: "bg-violet-100/90 text-violet-800",
+      border: "border-violet-200",
+    },
+    DEFAULT: {
+      badge: "bg-slate-100 text-slate-800",
+      cell: "bg-slate-100/80 text-slate-800",
+      border: "border-slate-200",
+    },
   };
   const colorFor = (code) => COLOR_MAP[code] || COLOR_MAP.DEFAULT;
 
@@ -100,6 +112,16 @@ const listPeople = useMemo(() => {
     for (const e of normEntries) {
       if (!e.timeSlotId) continue;
       m.set(`${e.day}:${e.timeSlotId}`, e.personId || null);
+    }
+    return m;
+  }, [normEntries]);
+
+  const byDaySlotCount = useMemo(() => {
+    const m = new Map();
+    for (const e of normEntries) {
+      if (!e.timeSlotId) continue;
+      const key = `${e.day}:${e.timeSlotId}`;
+      m.set(key, (m.get(key) || 0) + 1);
     }
     return m;
   }, [normEntries]);
@@ -128,19 +150,20 @@ const listPeople = useMemo(() => {
 
   const handleClear = (day, personId) => {
     const currentSlot = getPersonSlotForDay(personId, day);
-    if (currentSlot) onAssignmentChange?.(Number(day), String(currentSlot), null);
+    if (currentSlot)
+      onAssignmentChange?.(Number(day), String(currentSlot), String(personId), true);
   };
 
   // ===== Seleção de linhas =====
-  const [selectedIds, setSelectedIds] = useState(() => normPeopleAll.map(p => p.id));
+  const [selectedIds, setSelectedIds] = useState(() => normPeopleAll.map((p) => p.id));
   const togglePerson = (id) => {
-    setSelectedIds(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+    setSelectedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
       onPeopleVisibleChange?.(next);
       return next;
     });
   };
-  const normPeople = normPeopleAll.filter(p => selectedIds.includes(p.id));
+  const normPeople = normPeopleAll.filter((p) => selectedIds.includes(p.id));
 
   // ===== Dimensões compactas =====
   const nameColMin = 210;
@@ -153,62 +176,67 @@ const listPeople = useMemo(() => {
       <div className="flex items-center justify-between px-3 py-2 border-b bg-white">
         <div className="text-sm text-gray-600 flex items-center gap-2">
           <Users className="w-4 h-4" />
-          {normPeople.length} {normPeople.length === 1 ? 'colaborador' : 'colaboradores'} exibido(s)
+          {normPeople.length} {normPeople.length === 1 ? "colaborador" : "colaboradores"}{" "}
+          exibido(s)
         </div>
-       <Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline" size="sm">Selecionar pessoas</Button>
-  </PopoverTrigger>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              Selecionar pessoas
+            </Button>
+          </PopoverTrigger>
 
-  <PopoverContent
-    // posicionamento
-    side="bottom"
-    align="end"
-    sideOffset={8}
-    className="w-80 p-0 max-h-[70vh] overflow-y-auto overscroll-contain"
-    // evita briga de scroll com o Dialog "de trás"
-    onWheel={(e) => e.stopPropagation()}
-    onTouchMove={(e) => e.stopPropagation()}
-    // evita auto-focus estourar o viewport
-    onOpenAutoFocus={(e) => e.preventDefault()}
-  >
-    {/* Barra de busca fica fixa */}
-    <div className="sticky top-0 z-10 bg-popover border-b p-2">
-      <input
-        type="text"
-        value={peopleQuery}
-        onChange={(e) => setPeopleQuery(e.target.value)}
-        placeholder="Buscar por nome..."
-        className="w-full px-3 py-2 border rounded-md text-sm"
-      />
-    </div>
-
-    {/* Lista (o Content já rola) */}
-    <div className="p-2 space-y-1">
-      {listPeople.length === 0 && (
-        <div className="text-xs text-gray-500 px-2 py-1">Nenhum resultado</div>
-      )}
-
-      {listPeople.map(p => {
-        const checked = selectedIds.includes(p.id);
-        return (
-          <label
-            key={p.id}
-            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+          <PopoverContent
+            // posicionamento
+            side="bottom"
+            align="end"
+            sideOffset={8}
+            className="w-80 p-0 max-h-[70vh] overflow-y-auto overscroll-contain"
+            // evita briga de scroll com o Dialog "de trás"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            // evita auto-focus estourar o viewport
+            onOpenAutoFocus={(e) => e.preventDefault()}
           >
-            <Checkbox checked={checked} onCheckedChange={() => togglePerson(p.id)} />
-            <span className="text-sm">{p.name}</span>
-          </label>
-        );
-      })}
-    </div>
-  </PopoverContent>
-</Popover>
+            {/* Barra de busca fica fixa */}
+            <div className="sticky top-0 z-10 bg-popover border-b p-2">
+              <input
+                type="text"
+                value={peopleQuery}
+                onChange={(e) => setPeopleQuery(e.target.value)}
+                placeholder="Buscar por nome..."
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+            </div>
 
+            {/* Lista (o Content já rola) */}
+            <div className="p-2 space-y-1">
+              {listPeople.length === 0 && (
+                <div className="text-xs text-gray-500 px-2 py-1">Nenhum resultado</div>
+              )}
+
+              {listPeople.map((p) => {
+                const checked = selectedIds.includes(p.id);
+                return (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => togglePerson(p.id)}
+                    />
+                    <span className="text-sm">{p.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="overflow-x-auto">
-        <table className={`w-full ${dense ? 'text-[12px]' : 'text-sm'}`}>
+        <table className={`w-full ${dense ? "text-[12px]" : "text-sm"}`}>
           <thead className="bg-gray-50">
             <tr>
               <th
@@ -216,7 +244,9 @@ const listPeople = useMemo(() => {
                 style={{ minWidth: nameColMin }}
               >
                 Nome
-                <span className="block text-[10px] text-gray-400 font-normal">Cargo/Especialidade (opcional)</span>
+                <span className="block text-[10px] text-gray-400 font-normal">
+                  Cargo/Especialidade (opcional)
+                </span>
               </th>
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
                 const highlight = isWeekend(d) || isHoliday(d);
@@ -231,7 +261,9 @@ const listPeople = useMemo(() => {
                     title={`Dia ${d}`}
                   >
                     <div className="leading-3">{d}</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">{weekInitial(d)}</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">
+                      {weekInitial(d)}
+                    </div>
                   </th>
                 );
               })}
@@ -245,7 +277,9 @@ const listPeople = useMemo(() => {
                   className="sticky left-0 z-10 bg-inherit border-b border-gray-200 px-2 py-1"
                   style={{ minWidth: nameColMin }}
                 >
-                  <div className="font-medium text-gray-800 leading-tight">{person.name}</div>
+                  <div className="font-medium text-gray-800 leading-tight">
+                    {person.name}
+                  </div>
                   {person.role && (
                     <div className="text-[10px] text-gray-500">{person.role}</div>
                   )}
@@ -255,8 +289,10 @@ const listPeople = useMemo(() => {
                   const slotsMap = slotStatusForDay(d);
                   const currentSlot = getPersonSlotForDay(person.id, d);
                   const code = currentSlot
-                    ? shortCode(normSlots.find(s => s.id === currentSlot)?.description || '')
-                    : '';
+                    ? shortCode(
+                        normSlots.find((s) => s.id === currentSlot)?.description || ""
+                      )
+                    : "";
 
                   const highlight = isWeekend(d) || isHoliday(d);
                   const palette = colorFor(code);
@@ -281,11 +317,15 @@ const listPeople = useMemo(() => {
                               "h-7",
                               code
                                 ? `${palette.cell} ${palette.border} font-semibold`
-                                : "bg-white text-gray-500 border-slate-200 hover:border-blue-300"
-                            ].join(' ')}
-                            title={currentSlot ? 'Clique para alterar/remover' : 'Clique para atribuir'}
+                                : "bg-white text-gray-500 border-slate-200 hover:border-blue-300",
+                            ].join(" ")}
+                            title={
+                              currentSlot
+                                ? "Clique para alterar/remover"
+                                : "Clique para atribuir"
+                            }
                           >
-                            {currentSlot ? code : '—'}
+                            {currentSlot ? code : "—"}
                           </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-72">
@@ -296,7 +336,13 @@ const listPeople = useMemo(() => {
 
                             <Select
                               value={currentSlot || undefined}
-                              onValueChange={(slotId) => onAssignmentChange?.(Number(d), String(slotId), String(person.id))}
+                              onValueChange={(slotId) =>
+                                onAssignmentChange?.(
+                                  Number(d),
+                                  String(slotId),
+                                  String(person.id)
+                                )
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione um horário" />
@@ -304,15 +350,13 @@ const listPeople = useMemo(() => {
                               <SelectContent>
                                 {normSlots.map((s) => {
                                   const occupiedBy = slotsMap[s.id];
-                                  const isTakenByOther = occupiedBy && String(occupiedBy) !== String(person.id);
+                                  const isTakenByOther =
+                                    occupiedBy &&
+                                    String(occupiedBy) !== String(person.id);
                                   return (
-                                    <SelectItem
-                                      key={s.id}
-                                      value={s.id}
-                                      disabled={isTakenByOther}
-                                    >
+                                    <SelectItem key={s.id} value={s.id}>
                                       {shortCode(s.description)} — {s.description}
-                                      {isTakenByOther && ' (ocupado)'}
+                                      {isTakenByOther && " (ocupado)"}
                                     </SelectItem>
                                   );
                                 })}
@@ -348,13 +392,19 @@ const listPeople = useMemo(() => {
       <div className="border-t bg-white px-3 py-2 text-[12px] text-gray-600 flex flex-wrap gap-3">
         <span className="font-medium">Legenda:</span>
         {normSlots
-          .filter((s, idx, arr) => idx === arr.findIndex(t => shortCode(t.description) === shortCode(s.description)))
-          .map(s => {
+          .filter(
+            (s, idx, arr) =>
+              idx ===
+              arr.findIndex((t) => shortCode(t.description) === shortCode(s.description))
+          )
+          .map((s) => {
             const code = shortCode(s.description);
             const palette = colorFor(code);
             return (
               <span key={s.id} className="inline-flex items-center gap-1">
-                <span className={`inline-flex items-center justify-center min-w-6 h-5 px-1 rounded font-semibold ${palette.badge}`}>
+                <span
+                  className={`inline-flex items-center justify-center min-w-6 h-5 px-1 rounded font-semibold ${palette.badge}`}
+                >
                   {code}
                 </span>
                 {s.description}

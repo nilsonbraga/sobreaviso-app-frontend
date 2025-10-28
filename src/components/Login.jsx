@@ -19,7 +19,6 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // { token, refreshToken?, user: { id, name, email, role, teamId } }
       const session = await api.post('/auth/login', { email, password });
       doLogin(session);
 
@@ -28,8 +27,6 @@ const Login = () => {
         description: `Bem-vindo, ${session.user.name}!`,
       });
 
-      // redirecione se quiser:
-      // window.location.href = '/';
     } catch (err) {
       toast({
         title: 'Erro no login',
@@ -70,12 +67,7 @@ const Login = () => {
         </form>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-600 text-center">
-            <strong>Dica de acesso:</strong><br />
-            Use o admin do seed do backend.<br />
-            Email: <code>admin@sobreaviso.local</code><br />
-            Senha: <code>admin123</code>
-          </p>
+         
         </div>
       </motion.div>
     </div>

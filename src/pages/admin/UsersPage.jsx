@@ -1,3 +1,4 @@
+// src/pages/admin/UsersManagement.jsx
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
@@ -25,10 +26,9 @@ const UsersManagement = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
-    password: '',       // obrigatório só no create
-    role: 'team_admin', // padrão
-    teamId: '',         // obrigatório se role === 'team_admin'
+    email: '',          
+    role: 'team_admin', 
+    teamId: '',        
   });
 
   useEffect(() => { loadData(); }, []);
@@ -55,13 +55,7 @@ const UsersManagement = () => {
 
   function openNew() {
     setEditingUser(null);
-    setFormData({
-      name: '',
-      email: '',
-      password: '',
-      role: 'team_admin',
-      teamId: '',
-    });
+    setFormData({ name: '', email: '', role: 'team_admin', teamId: '' });
     setIsDialogOpen(true);
   }
 
@@ -70,9 +64,8 @@ const UsersManagement = () => {
     setFormData({
       name: u.name || '',
       email: u.email || '',
-      password: '', // ao editar deixamos vazio (opcional)
       role: u.role || 'team_admin',
-      teamId: u.teamId || '',
+      teamId: u.teamId ? String(u.teamId) : '',
     });
     setIsDialogOpen(true);
   }
@@ -81,34 +74,19 @@ const UsersManagement = () => {
     setIsDialogOpen(open);
     if (!open) {
       setEditingUser(null);
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        role: 'team_admin',
-        teamId: '',
-      });
+      setFormData({ name: '', email: '', role: 'team_admin', teamId: '' });
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isAdmin) {
-      toast({
-        title: 'Sem permissão',
-        description: 'Apenas administradores podem criar/editar usuários.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Sem permissão', description: 'Apenas administradores podem criar/editar usuários.', variant: 'destructive' });
       return;
     }
 
-    // validação simples
     if (!formData.name.trim() || !formData.email.trim()) {
-      toast({ title: 'Preencha nome e e-mail', variant: 'destructive' });
-      return;
-    }
-    if (!editingUser && !formData.password.trim()) {
-      toast({ title: 'Defina uma senha para o novo usuário', variant: 'destructive' });
+      toast({ title: 'Preencha nome e usuário', variant: 'destructive' });
       return;
     }
     if (formData.role === 'team_admin' && !formData.teamId) {
@@ -120,23 +98,17 @@ const UsersManagement = () => {
       setSaving(true);
 
       if (editingUser) {
-        // PUT /users/:id (senha opcional)
-        const payload = {
+        await api.put(`/users/${editingUser.id}`, {
           name: formData.name.trim(),
           email: formData.email.trim(),
           role: formData.role,
           teamId: formData.role === 'team_admin' ? formData.teamId : null,
-        };
-        if (formData.password.trim()) payload.password = formData.password.trim();
-
-        await api.put(`/users/${editingUser.id}`, payload);
+        });
         toast({ title: 'Usuário atualizado com sucesso!' });
       } else {
-        // POST /users (senha obrigatória)
         await api.post('/users', {
           name: formData.name.trim(),
           email: formData.email.trim(),
-          password: formData.password.trim(),
           role: formData.role,
           teamId: formData.role === 'team_admin' ? formData.teamId : null,
         });
@@ -146,7 +118,7 @@ const UsersManagement = () => {
       await loadData();
       setIsDialogOpen(false);
       setEditingUser(null);
-      setFormData({ name: '', email: '', password: '', role: 'team_admin', teamId: '' });
+      setFormData({ name: '', email: '', role: 'team_admin', teamId: '' });
     } catch (e) {
       toast({
         title: 'Erro ao salvar usuário',
@@ -160,21 +132,14 @@ const UsersManagement = () => {
 
   async function handleDelete(id) {
     if (!isAdmin) {
-      toast({
-        title: 'Sem permissão',
-        description: 'Apenas administradores podem remover usuários.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Sem permissão', description: 'Apenas administradores podem remover usuários.', variant: 'destructive' });
       return;
     }
     if (id === me?.id) {
-      toast({
-        title: 'Operação bloqueada',
-        description: 'Você não pode excluir a si mesmo.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Operação bloqueada', description: 'Você não pode excluir a si mesmo.', variant: 'destructive' });
       return;
     }
+
     const ok = window.confirm('Tem certeza que deseja excluir este usuário?');
     if (!ok) return;
 
@@ -192,11 +157,7 @@ const UsersManagement = () => {
   }
 
   if (!isAdmin) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">Você não tem permissão para gerenciar usuários.</p>
-      </div>
-    );
+    return <div className="text-center py-12"><p className="text-gray-600">Você não tem permissão para gerenciar usuários.</p></div>;
   }
 
   return (
@@ -207,50 +168,29 @@ const UsersManagement = () => {
         <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="gap-2" onClick={openNew}>
-              <Plus className="w-4 h-4" />
-              Novo Usuário
+              <Plus className="w-4 h-4" /> Novo Usuário
             </Button>
           </DialogTrigger>
-
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingUser ? 'Editar' : 'Novo'} Usuário</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>{editingUser ? 'Editar' : 'Novo'} Usuário</DialogTitle></DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  disabled={saving}
-                />
+                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required disabled={saving} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Usuário</Label>
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled={saving}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">{editingUser ? 'Senha (opcional)' : 'Senha'}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={editingUser ? 'Deixe em branco para manter' : ''}
-                  required={!editingUser}
-                  disabled={saving}
+                  placeholder="ex.: joao.silva ou joao@empresa"
+                  autoComplete="username"
                 />
               </div>
 
@@ -261,9 +201,7 @@ const UsersManagement = () => {
                   onValueChange={(value) => setFormData({ ...formData, role: value, teamId: value === 'admin' ? '' : formData.teamId })}
                   required
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um perfil" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um perfil" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador Geral</SelectItem>
                     <SelectItem value="team_admin">Administrador de Equipe</SelectItem>
@@ -274,19 +212,11 @@ const UsersManagement = () => {
               {formData.role === 'team_admin' && (
                 <div className="space-y-2">
                   <Label htmlFor="team">Equipe</Label>
-                  <Select
-                    value={formData.teamId}
-                    onValueChange={(value) => setFormData({ ...formData, teamId: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma equipe" />
-                    </SelectTrigger>
+                  <Select value={formData.teamId} onValueChange={(value) => setFormData({ ...formData, teamId: value })} required>
+                    <SelectTrigger><SelectValue placeholder="Selecione uma equipe" /></SelectTrigger>
                     <SelectContent>
                       {teams.map(team => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
+                        <SelectItem key={String(team.id)} value={String(team.id)}>{team.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -305,7 +235,7 @@ const UsersManagement = () => {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((u, index) => {
-          const team = teams.find(t => t.id === u.teamId);
+          const team = teams.find(t => String(t.id) === String(u.teamId));
           return (
             <motion.div
               key={u.id}
@@ -339,8 +269,7 @@ const UsersManagement = () => {
 
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => openEdit(u)} className="flex-1">
-                  <Edit className="w-4 h-4 mr-1" />
-                  Editar
+                  <Edit className="w-4 h-4 mr-1" /> Editar
                 </Button>
                 <Button
                   variant="destructive"

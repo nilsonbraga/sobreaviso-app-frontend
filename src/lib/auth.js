@@ -1,10 +1,10 @@
 // src/lib/auth.js
 const TOKEN_KEY   = 'auth_token';
 const USER_KEY    = 'auth_user';
-const REFRESH_KEY = 'refresh_token'; // use se seu backend emitir refreshToken
+const REFRESH_KEY = 'refresh_token';
 
 let refreshTimerId = null;
-const SAFE_WINDOW_SECONDS = 60; // renova 1min antes
+const SAFE_WINDOW_SECONDS = 60; 
 
 export function saveAuth({ token, user, refreshToken }) {
   if (token) localStorage.setItem(TOKEN_KEY, token);

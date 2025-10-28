@@ -14,7 +14,6 @@ const useAuth = create((set) => ({
   },
 
   login: (session) => {
-    // session esperado: { token, user, refreshToken? }
     saveAuth(session);
     set({ user: session.user, token: session.token });
   },

@@ -22,7 +22,6 @@ const PeopleManagement = () => {
   const [teams, setTeams] = useState([]);
   const [sectors, setSectors] = useState([]);
 
-  // modal
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
   const [formData, setFormData] = useState({
@@ -33,13 +32,12 @@ const PeopleManagement = () => {
     cargo: '',
   });
 
-  // filtros + busca + view
   const [filters, setFilters] = useState({
-    sectorId: 'all',                      // agora filtra via setores da EQUIPE da pessoa
+    sectorId: 'all',                    
     teamId: isAdmin ? 'all' : (userTeamId || 'all'),
   });
   const [query, setQuery] = useState('');
-  const [view, setView] = useState('cards'); // 'cards' | 'table'
+  const [view, setView] = useState('cards'); 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
@@ -49,7 +47,7 @@ const PeopleManagement = () => {
       setLoading(true);
       const [peopleRes, teamsRes, sectorsRes] = await Promise.all([
         api.get('/people'),
-        api.get('/teams'),     // precisa vir com team.sectors
+        api.get('/teams'),     
         api.get('/sectors'),
       ]);
 
@@ -102,7 +100,6 @@ const PeopleManagement = () => {
       teamId: isAdmin ? formData.teamId : userTeamId,
       matricula: formData.matricula || null,
       cargo: formData.cargo || null,
-      // sectorId removido — serviço é inferido via equipe
     };
 
     if (!payload.teamId) {
@@ -145,28 +142,23 @@ const PeopleManagement = () => {
     }
   }
 
-  // dicionários auxiliares
   const teamById = useMemo(
     () => Object.fromEntries((teams || []).map(t => [String(t.id), t])),
     [teams]
   );
 
-  // serviços (setores) derivados da equipe da pessoa
   const getTeamSectors = (teamId) => {
     const t = teamById[String(teamId)];
     return Array.isArray(t?.sectors) ? t.sectors : [];
   };
 
-  // ---- filtro por Serviço agora via setores da equipe da pessoa ----
   const visiblePeople = useMemo(() => {
     const q = query.trim().toLowerCase();
 
     return (people || []).filter(person => {
-      // filtro por equipe
       const teamMatch = filters.teamId === 'all' || String(person.teamId) === String(filters.teamId);
       if (!teamMatch) return false;
 
-      // filtro por serviço (via equipe)
       if (filters.sectorId !== 'all') {
         const tSectors = getTeamSectors(person.teamId);
         const hasSector = tSectors.some(s => String(s.id) === String(filters.sectorId));
@@ -200,9 +192,8 @@ const PeopleManagement = () => {
     });
   }, [people, filters, query, teamById]);
 
-  const sectorOptions = sectors; // para o dropdown de filtro por serviço
+  const sectorOptions = sectors; 
 
-  // string auxiliar para exibir serviços/hospitais do card/linha
   const servicesLabel = (teamId) => {
     const list = getTeamSectors(teamId);
     if (!list.length) return 'Sem serviço';
@@ -214,11 +205,9 @@ const PeopleManagement = () => {
       .map(s => (s.hospital ? hospitalLabel(s.hospital) : null))
       .filter(Boolean);
     if (!labels.length) return '—';
-    // se vários, mostra distintos
     return Array.from(new Set(labels)).join(', ');
   };
 
-  // serviços da equipe selecionada no FORM (chips somente leitura)
   const selectedTeamServices = useMemo(() => getTeamSectors(formData.teamId), [formData.teamId, teams]);
 
   return (
@@ -230,11 +219,9 @@ const PeopleManagement = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Filtros */}
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-500" />
 
-            {/* Filtro por Serviço (via equipe) */}
             <Select
               value={filters.sectorId}
               onValueChange={(value) => setFilters(prev => ({ ...prev, sectorId: value }))}
@@ -252,7 +239,6 @@ const PeopleManagement = () => {
               </SelectContent>
             </Select>
 
-            {/* Filtro por Equipe */}
             <Select
               value={filters.teamId}
               onValueChange={(value) => setFilters(prev => ({ ...prev, teamId: value }))}
@@ -270,7 +256,6 @@ const PeopleManagement = () => {
             </Select>
           </div>
 
-          {/* Busca */}
           <Input
             placeholder="Buscar por nome, matrícula, cargo..."
             value={query}
@@ -278,7 +263,6 @@ const PeopleManagement = () => {
             className="w-[240px]"
           />
 
-          {/* Novo */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2" onClick={openNew}>
@@ -333,7 +317,6 @@ const PeopleManagement = () => {
                   </div>
                 </div>
 
-                {/* Equipe */}
                 <div className="space-y-2">
                   <Label htmlFor="team">Equipe</Label>
                   <Select
@@ -353,7 +336,6 @@ const PeopleManagement = () => {
                   </Select>
                 </div>
 
-                {/* Serviços da equipe (somente leitura) */}
                 <div className="space-y-2">
                   <Label>Serviço(s) da equipe</Label>
                   {selectedTeamServices.length ? (
@@ -388,14 +370,12 @@ const PeopleManagement = () => {
 
       {loading && <div className="text-sm text-gray-500">Carregando pessoas...</div>}
 
-      {/* Alternador de visualização */}
       <Tabs value={view} onValueChange={setView} className="space-y-4">
         <TabsList>
           <TabsTrigger value="cards" className="gap-1"><LayoutGrid className="w-4 h-4" /> Cards</TabsTrigger>
           <TabsTrigger value="table" className="gap-1"><TableIcon className="w-4 h-4" /> Tabela</TabsTrigger>
         </TabsList>
 
-        {/* CARDS */}
         <TabsContent value="cards">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visiblePeople.map((person, index) => {
@@ -455,7 +435,6 @@ const PeopleManagement = () => {
           )}
         </TabsContent>
 
-        {/* TABELA */}
         <TabsContent value="table">
           <div className="bg-white rounded-2xl shadow p-4">
             <div className="overflow-x-auto">

@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { LogIn, Shield, Calendar } from 'lucide-react';
@@ -7,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { api } from '@/lib/api';
+import { api } from '@/lib/api';              
+import authApi from '@/services/authApi';     
 import useAuth from '@/store/auth';
 
 const Login = () => {
-  const [email, setEmail]       = useState('');
+  const [username, setUsername] = useState('');  
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [loading,  setLoading]  = useState(false);
 
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -23,7 +25,6 @@ const Login = () => {
   const doLogin = useAuth(s => s.login);
   const hydrate = useAuth(s => s.hydrate);
 
-  // Se já está logado, manda pro painel
   useEffect(() => { hydrate?.(); }, []);
   useEffect(() => {
     if (user) {
@@ -37,22 +38,41 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      // Espera-se { token, refreshToken?, user: { id, name, email, role, teamId } }
-      const session = await api.post('/auth/login', { email, password });
+      await authApi.post('login', { username, password });
+
+      const session = await api.post('/auth/ad-login', { email: username });
+
       doLogin(session);
 
       toast({
         title: 'Login realizado!',
         description: `Bem-vindo, ${session.user.name}!`,
       });
-      // redireciona no useEffect acima
     } catch (err) {
-      toast({
-        title: 'Erro no login',
-        description: err?.message || 'Email ou senha incorretos',
-        variant: 'destructive',
-      });
+      const status = err?.response?.status;
+      const msg    = err?.response?.data?.error;
+
+      if (status === 404 && msg === 'USER_NOT_FOUND') {
+        toast({
+          title: 'Acesso não autorizado',
+          description: 'Você autenticou no AD, mas não possui cadastro no sistema. Solicite acesso ao SETISD.',
+          variant: 'destructive',
+        });
+      } else if (status === 401) {
+        toast({
+          title: 'Falha na autenticação',
+          description: 'Usuário ou senha inválidos (AD).',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Erro no login',
+          description: err?.message || 'Não foi possível autenticar.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -64,8 +84,7 @@ const Login = () => {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md"
-      >       
-
+      >
         <div className="text-center mb-8">
           <motion.div
             initial={{ scale: 0 }}
@@ -81,16 +100,17 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="username">Usuário</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"                
+              placeholder="usuário de rede"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               className="h-12"
               disabled={loading}
+              autoComplete="username"
             />
           </div>
 
@@ -105,6 +125,7 @@ const Login = () => {
               required
               className="h-12"
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
@@ -117,11 +138,11 @@ const Login = () => {
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-gray-600 text-center">
             <strong>Acesso</strong><br />
-            Para ter acesso ao sistema de escala de sobreaviso entre em contato com o SETISD.<br />
+            Use suas credenciais de rede EBSERH. Em caso de dúvida, contate o SETISD.
           </p>
         </div>
 
-         <div className="flex justify-center">
+        <div className="flex justify-center">
           <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-slate-600 hover:text-slate-900">
             <Link to="/" title="Ver plantonistas">
               <Calendar className="w-3.5 h-3.5 mr-1" />

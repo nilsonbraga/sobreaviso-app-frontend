@@ -20,7 +20,6 @@ import * as XLSX from 'xlsx';
 import { api } from '@/lib/api';
 import useAuth from '@/store/auth';
 
-/* ======================= helpers ======================= */
 const getMonthName = (monthString) => {
   const [year, month] = monthString.split('-');
   const date = new Date(year, month - 1, 15);
@@ -32,16 +31,13 @@ const isWeekend = (y, m, d) => {
   return wd === 0 || wd === 6;
 };
 
-// Lê matrícula do colaborador (ajuste os campos conforme seu modelo)
 const getMatricula = (person) =>
   String(person?.matricula ?? person?.siape ?? person?.registration ?? '') || '';
 
-// Lê cargo/especialidade do colaborador (ajuste os campos conforme seu modelo)
 const getCargoEsp = (person) =>
   String(person?.cargo ?? person?.especialidade ?? person?.jobTitle ?? person?.role ?? '') || '';
 
 
-// Sigla
 const shortCode = (desc) => {
   if (!desc) return '';
   const parts = String(desc).trim().split(/\s+|[/\-–—]+/g);
@@ -78,7 +74,6 @@ const COLOR_MAP = {
 
 const hospitalLabel = (hosp) => (hosp?.huf || hosp?.sigla || hosp?.name || hosp?.uo || '—');
 
-/* ======================= CARD ======================= */
 const ScheduleCard = ({ schedule, teams, people, timeSlots, onEdit, onDelete }) => {
   const [filteredPersonIds, setFilteredPersonIds] = useState([]);
   const [chooseExportOpen, setChooseExportOpen] = useState(false);
@@ -89,7 +84,6 @@ const ScheduleCard = ({ schedule, teams, people, timeSlots, onEdit, onDelete }) 
     [people, schedule.teamId]
   );
 
-  // HUF/UO: tenta primeiro pelo serviço da escala; se não houver, usa 1º hospital do time
   const hosp =
     schedule?.sector?.hospital ||
     team?.sectors?.[0]?.hospital ||
@@ -112,335 +106,315 @@ const ScheduleCard = ({ schedule, teams, people, timeSlots, onEdit, onDelete }) 
     return Math.round(sum * 100) / 100;
   }, [schedule.entries, timeSlots]);
 
-const exportMatrixPDF = () => {
-  const [year, monthIndex] = schedule.month.split('-').map(Number);
-  const daysInMonth = new Date(year, monthIndex, 0).getDate();
+  const exportMatrixPDF = () => {
+    const [year, monthIndex] = schedule.month.split('-').map(Number);
+    const daysInMonth = new Date(year, monthIndex, 0).getDate();
 
-  const normPeople = teamPeople
-    .map(p => ({ ...p, id: String(p.id) }))
-    .filter(p => filteredPersonIds.length === 0 || filteredPersonIds.includes(String(p.id)));
+    const normPeople = teamPeople
+      .map(p => ({ ...p, id: String(p.id) }))
+      .filter(p => filteredPersonIds.length === 0 || filteredPersonIds.includes(String(p.id)));
 
-  const normSlots = timeSlots.map(ts => ({
-    ...ts,
-    id: String(ts.id),
-    description: ts.description,
-    startTime: ts.startTime,
-    endTime: ts.endTime
-  }));
-  const slotById = new Map(normSlots.map(s => [String(s.id), s]));
+    const normSlots = timeSlots.map(ts => ({
+      ...ts,
+      id: String(ts.id),
+      description: ts.description,
+      startTime: ts.startTime,
+      endTime: ts.endTime
+    }));
+    const slotById = new Map(normSlots.map(s => [String(s.id), s]));
 
-  const pdf = new jsPDF('landscape', 'pt', 'a4');
-  const pw = pdf.internal.pageSize.getWidth();
-  const ph = pdf.internal.pageSize.getHeight();
+    const pdf = new jsPDF('landscape', 'pt', 'a4');
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
 
-  const margin = 40;
-  const topTitle = margin;
-  const contentTop = topTitle + 64;
-  const bottom = ph - margin;
+    const margin = 40;
+    const topTitle = margin;
+    const contentTop = topTitle + 64;
+    const bottom = ph - margin;
 
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(22); pdf.setTextColor(0,0,0);
-  pdf.text('Escala de Sobreaviso', pw / 2, topTitle + 8, { align: 'center' });
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11);
-  const subtitle = `${team?.name || 'Equipe'} - ${getMonthName(schedule.month)}`;
-  pdf.text(subtitle, pw / 2, topTitle + 24, { align: 'center' });
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(22); pdf.setTextColor(0,0,0);
+    pdf.text('Escala de Plantão/Sobreaviso', pw / 2, topTitle + 8, { align: 'center' });
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11);
+    const subtitle = `${team?.name || 'Equipe'} - ${getMonthName(schedule.month)}`;
+    pdf.text(subtitle, pw / 2, topTitle + 24, { align: 'center' });
 
-  const metaLine = `HUF: ${labelHUF}      UO: ${labelUO}      Processo SEI: ${labelSEI}`;
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
-  pdf.text(metaLine, pw / 2, topTitle + 40, { align: 'center' });
+    const metaLine = `HUF: ${labelHUF}      UO: ${labelUO}      Processo SEI: ${labelSEI}`;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
+    pdf.text(metaLine, pw / 2, topTitle + 40, { align: 'center' });
 
-  // largura utilizável
-  const contentWidth = pw - margin * 2;
+    const contentWidth = pw - margin * 2;
 
-  // FIXAS: matrícula + nome + cargo (cargo mais estreita)
-  const matricColWidth = 60; // 7 dígitos
-  const nameColWidth   = Math.max(160, Math.min(185, contentWidth * 0.20));
-  const cargoColWidth  = 110; // <- reduzida
+    const matricColWidth = 60; 
+    const nameColWidth   = Math.max(160, Math.min(185, contentWidth * 0.20));
+    const cargoColWidth  = 110; 
 
-  // DIAS + P/H (ficam um pouco mais largos com a redução acima)
-  const extraCols = 2; // P e H
-  const fixedColsWidth = matricColWidth + nameColWidth + cargoColWidth;
-  const gridWidth = contentWidth - fixedColsWidth;
-  const dayColWidth = gridWidth / (daysInMonth + extraCols);
+    const extraCols = 2; 
+    const fixedColsWidth = matricColWidth + nameColWidth + cargoColWidth;
+    const gridWidth = contentWidth - fixedColsWidth;
+    const dayColWidth = gridWidth / (daysInMonth + extraCols);
 
-  const headerHeight = 26;
-  const rowHeight = 14;
+    const headerHeight = 26;
+    const rowHeight = 14;
 
-  let x = margin;
-  let y = contentTop;
+    let x = margin;
+    let y = contentTop;
 
-  pdf.setDrawColor(185);
-  pdf.setLineWidth(0.6);
+    pdf.setDrawColor(185);
+    pdf.setLineWidth(0.6);
 
-  // Cabeçalho fixo
-  pdf.rect(x, y, matricColWidth, headerHeight, 'S');
-  pdf.rect(x + matricColWidth, y, nameColWidth, headerHeight, 'S');
-  pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, headerHeight, 'S');
-
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-  pdf.text('Matrícula', x + 4, y + 10);
-  pdf.text('Nome', x + matricColWidth + 4, y + 10);
-  pdf.text('Cargo/Esp.', x + matricColWidth + nameColWidth + 4, y + 10);
-
-  // Cabeçalho de dias
-  const daysStartX = x + fixedColsWidth;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const colX = daysStartX + (d - 1) * dayColWidth;
-    const weekend = isWeekend(year, monthIndex, d);
-
-    if (weekend) {
-      pdf.setFillColor(244);
-      pdf.rect(colX, y, dayColWidth, headerHeight, 'F');
-      pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); pdf.setDrawColor(185);
-    } else {
-      pdf.rect(colX, y, dayColWidth, headerHeight, 'S');
-    }
+    pdf.rect(x, y, matricColWidth, headerHeight, 'S');
+    pdf.rect(x + matricColWidth, y, nameColWidth, headerHeight, 'S');
+    pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, headerHeight, 'S');
 
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-    pdf.text(String(d), colX + dayColWidth / 2, y + 10, { align: 'center' });
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
-    pdf.text(weekInitial(year, monthIndex, d), colX + dayColWidth / 2, y + 19, { align: 'center' });
-  }
+    pdf.text('Matrícula', x + 4, y + 10);
+    pdf.text('Nome', x + matricColWidth + 4, y + 10);
+    pdf.text('Cargo/Esp.', x + matricColWidth + nameColWidth + 4, y + 10);
 
-  // Colunas P e H
-  const idxPlant = daysInMonth;
-  const idxHoras = daysInMonth + 1;
-  const cxPlant = daysStartX + idxPlant * dayColWidth;
-  const cxHoras = daysStartX + idxHoras * dayColWidth;
-  pdf.rect(cxPlant, y, dayColWidth, headerHeight, 'S');
-  pdf.rect(cxHoras, y, dayColWidth, headerHeight, 'S');
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-  pdf.text('P', cxPlant + dayColWidth / 2, y + 10, { align: 'center' });
-  pdf.text('H', cxHoras + dayColWidth / 2, y + 10, { align: 'center' });
-
-  // Abrevia APENAS o penúltimo nome se não couber
-  const fitPenultimateOnly = (fullName, maxWidthPt) => {
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
-    const pad = 6;
-    const maxTextWidth = Math.max(10, maxWidthPt - pad);
-    const width = (t) => pdf.getTextWidth(t);
-
-    if (width(fullName) <= maxTextWidth) return fullName;
-
-    const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 3) {
-      const pen = parts.length - 2;
-      const onlyPenAbbrev = parts.slice();
-      onlyPenAbbrev[pen] = `${parts[pen][0]}.`;
-      const candidate = onlyPenAbbrev.join(' ');
-      if (width(candidate) <= maxTextWidth) return candidate;
-
-      // Se ainda não couber: reticências no fim (sem mexer nos demais nomes).
-      let clipped = candidate;
-      while (clipped.length > 3 && width(clipped + '…') > maxTextWidth) clipped = clipped.slice(0, -1);
-      return clipped + '…';
-    }
-
-    // 1–2 nomes: só reticências se necessário
-    let clipped = fullName;
-    while (clipped.length > 3 && width(clipped + '…') > maxTextWidth) clipped = clipped.slice(0, -1);
-    return clipped + '…';
-  };
-
-  // Linhas
-  y += headerHeight;
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
-
-  const getSlotFor = (pid, d) => {
-    for (const e of (schedule.entries || [])) {
-      if (Number(e.day) === d && String(e.personId) === String(pid)) return String(e.timeSlotId);
-    }
-    return null;
-  };
-
-  for (const p of normPeople) {
-    // 3 colunas fixas
-    pdf.rect(x, y, matricColWidth, rowHeight, 'S');
-    pdf.rect(x + matricColWidth, y, nameColWidth, rowHeight, 'S');
-    pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, rowHeight, 'S');
-
-    // textos fixos
-    pdf.text(getMatricula(p) || '—', x + 4, y + 9.5);
-    const nameFitted = fitPenultimateOnly(p.name || '—', nameColWidth);
-    pdf.text(nameFitted, x + matricColWidth + 4, y + 9.5);
-    pdf.text(getCargoEsp(p) || '—', x + matricColWidth + nameColWidth + 4, y + 9.5);
-
-    let plant = 0, horas = 0;
-
-    // dias
+    const daysStartX = x + fixedColsWidth;
     for (let d = 1; d <= daysInMonth; d++) {
       const colX = daysStartX + (d - 1) * dayColWidth;
       const weekend = isWeekend(year, monthIndex, d);
 
       if (weekend) {
         pdf.setFillColor(244);
-        pdf.rect(colX, y, dayColWidth, rowHeight, 'F');
-        pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, rowHeight, 'S'); pdf.setDrawColor(185);
+        pdf.rect(colX, y, dayColWidth, headerHeight, 'F');
+        pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); pdf.setDrawColor(185);
       } else {
-        pdf.rect(colX, y, dayColWidth, rowHeight, 'S');
+        pdf.rect(colX, y, dayColWidth, headerHeight, 'S');
       }
 
-      const sid = getSlotFor(p.id, d);
-      const slot = sid ? slotById.get(String(sid)) : null;
-      const code = slot ? shortCode(slot.description) : '—';
-
-      // Fonte MENOR dentro das células dos dias para caber "SDN"
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7);
-      const col = COLOR_MAP[code]?.text || [30,41,59];
-      pdf.setTextColor(...col);
-      pdf.text(code, colX + dayColWidth / 2, y + 9.2, { align: 'center' });
-      pdf.setTextColor(0,0,0);
-      pdf.setFontSize(8); // volta para tamanho padrão de linha
-
-      if (slot) { plant += 1; horas += slotDurationHours(slot); }
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
+      pdf.text(String(d), colX + dayColWidth / 2, y + 10, { align: 'center' });
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+      pdf.text(weekInitial(year, monthIndex, d), colX + dayColWidth / 2, y + 19, { align: 'center' });
     }
 
-    const hoursFmt = Number.isInteger(horas) ? String(horas) : horas.toFixed(1);
-    pdf.rect(cxPlant, y, dayColWidth, rowHeight, 'S');
-    pdf.text(String(plant), cxPlant + dayColWidth / 2, y + 9.5, { align: 'center' });
-    pdf.rect(cxHoras, y, dayColWidth, rowHeight, 'S');
-    pdf.text(hoursFmt, cxHoras + dayColWidth / 2, y + 9.5, { align: 'center' });
+    const idxPlant = daysInMonth;
+    const idxHoras = daysInMonth + 1;
+    const cxPlant = daysStartX + idxPlant * dayColWidth;
+    const cxHoras = daysStartX + idxHoras * dayColWidth;
+    pdf.rect(cxPlant, y, dayColWidth, headerHeight, 'S');
+    pdf.rect(cxHoras, y, dayColWidth, headerHeight, 'S');
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+    pdf.text('P', cxPlant + dayColWidth / 2, y + 10, { align: 'center' });
+    pdf.text('H', cxHoras + dayColWidth / 2, y + 10, { align: 'center' });
 
-    y += rowHeight;
+    const fitPenultimateOnly = (fullName, maxWidthPt) => {
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+      const pad = 6;
+      const maxTextWidth = Math.max(10, maxWidthPt - pad);
+      const width = (t) => pdf.getTextWidth(t);
 
-    // quebra de página
-    if (y + rowHeight > bottom - 60) {
-      pdf.addPage('a4', 'landscape');
-      y = contentTop;
+      if (width(fullName) <= maxTextWidth) return fullName;
 
-      // cabeçalho novamente
-      pdf.setDrawColor(185); pdf.setLineWidth(0.6);
-      pdf.rect(x, y, matricColWidth, headerHeight, 'S');
-      pdf.rect(x + matricColWidth, y, nameColWidth, headerHeight, 'S');
-      pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, headerHeight, 'S');
+      const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 3) {
+        const pen = parts.length - 2;
+        const onlyPenAbbrev = parts.slice();
+        onlyPenAbbrev[pen] = `${parts[pen][0]}.`;
+        const candidate = onlyPenAbbrev.join(' ');
+        if (width(candidate) <= maxTextWidth) return candidate;
 
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-      pdf.text('Matrícula', x + 4, y + 10);
-      pdf.text('Nome', x + matricColWidth + 4, y + 10);
-      pdf.text('Cargo/Esp.', x + matricColWidth + nameColWidth + 4, y + 10);
+        let clipped = candidate;
+        while (clipped.length > 3 && width(clipped + '…') > maxTextWidth) clipped = clipped.slice(0, -1);
+        return clipped + '…';
+      }
+
+      let clipped = fullName;
+      while (clipped.length > 3 && width(clipped + '…') > maxTextWidth) clipped = clipped.slice(0, -1);
+      return clipped + '…';
+    };
+
+    y += headerHeight;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+
+    const getSlotFor = (pid, d) => {
+      for (const e of (schedule.entries || [])) {
+        if (Number(e.day) === d && String(e.personId) === String(pid)) return String(e.timeSlotId);
+      }
+      return null;
+    };
+
+    for (const p of normPeople) {
+      pdf.rect(x, y, matricColWidth, rowHeight, 'S');
+      pdf.rect(x + matricColWidth, y, nameColWidth, rowHeight, 'S');
+      pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, rowHeight, 'S');
+
+      pdf.text(getMatricula(p) || '—', x + 4, y + 9.5);
+      const nameFitted = fitPenultimateOnly(p.name || '—', nameColWidth);
+      pdf.text(nameFitted, x + matricColWidth + 4, y + 9.5);
+      pdf.text(getCargoEsp(p) || '—', x + matricColWidth + nameColWidth + 4, y + 9.5);
+
+      let plant = 0, horas = 0;
 
       for (let d = 1; d <= daysInMonth; d++) {
         const colX = daysStartX + (d - 1) * dayColWidth;
         const weekend = isWeekend(year, monthIndex, d);
-        if (weekend) { pdf.setFillColor(244); pdf.rect(colX, y, dayColWidth, headerHeight, 'F'); pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); pdf.setDrawColor(185); }
-        else { pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); }
-        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-        pdf.text(String(d), colX + dayColWidth / 2, y + 10, { align: 'center' });
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
-        pdf.text(weekInitial(year, monthIndex, d), colX + dayColWidth / 2, y + 19, { align: 'center' });
+
+        if (weekend) {
+          pdf.setFillColor(244);
+          pdf.rect(colX, y, dayColWidth, rowHeight, 'F');
+          pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, rowHeight, 'S'); pdf.setDrawColor(185);
+        } else {
+          pdf.rect(colX, y, dayColWidth, rowHeight, 'S');
+        }
+
+        const sid = getSlotFor(p.id, d);
+        const slot = sid ? slotById.get(String(sid)) : null;
+        const code = slot ? shortCode(slot.description) : '—';
+
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7);
+        const col = COLOR_MAP[code]?.text || [30,41,59];
+        pdf.setTextColor(...col);
+        pdf.text(code, colX + dayColWidth / 2, y + 9.2, { align: 'center' });
+        pdf.setTextColor(0,0,0);
+        pdf.setFontSize(8); 
+
+        if (slot) { plant += 1; horas += slotDurationHours(slot); }
       }
 
-      pdf.rect(cxPlant, y, dayColWidth, headerHeight, 'S');
-      pdf.rect(cxHoras, y, dayColWidth, headerHeight, 'S');
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-      pdf.text('P', cxPlant + dayColWidth / 2, y + 10, { align: 'center' });
-      pdf.text('H', cxHoras + dayColWidth / 2, y + 10, { align: 'center' });
+      const hoursFmt = Number.isInteger(horas) ? String(horas) : horas.toFixed(1);
+      pdf.rect(cxPlant, y, dayColWidth, rowHeight, 'S');
+      pdf.text(String(plant), cxPlant + dayColWidth / 2, y + 9.5, { align: 'center' });
+      pdf.rect(cxHoras, y, dayColWidth, rowHeight, 'S');
+      pdf.text(hoursFmt, cxHoras + dayColWidth / 2, y + 9.5, { align: 'center' });
 
-      y += headerHeight;
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+      y += rowHeight;
+
+      if (y + rowHeight > bottom - 60) {
+        pdf.addPage('a4', 'landscape');
+        y = contentTop;
+
+        pdf.setDrawColor(185); pdf.setLineWidth(0.6);
+        pdf.rect(x, y, matricColWidth, headerHeight, 'S');
+        pdf.rect(x + matricColWidth, y, nameColWidth, headerHeight, 'S');
+        pdf.rect(x + matricColWidth + nameColWidth, y, cargoColWidth, headerHeight, 'S');
+
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+        pdf.text('Matrícula', x + 4, y + 10);
+        pdf.text('Nome', x + matricColWidth + 4, y + 10);
+        pdf.text('Cargo/Esp.', x + matricColWidth + nameColWidth + 4, y + 10);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const colX = daysStartX + (d - 1) * dayColWidth;
+          const weekend = isWeekend(year, monthIndex, d);
+          if (weekend) { pdf.setFillColor(244); pdf.rect(colX, y, dayColWidth, headerHeight, 'F'); pdf.setDrawColor(200); pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); pdf.setDrawColor(185); }
+          else { pdf.rect(colX, y, dayColWidth, headerHeight, 'S'); }
+          pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+          pdf.text(String(d), colX + dayColWidth / 2, y + 10, { align: 'center' });
+          pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+          pdf.text(weekInitial(year, monthIndex, d), colX + dayColWidth / 2, y + 19, { align: 'center' });
+        }
+
+        pdf.rect(cxPlant, y, dayColWidth, headerHeight, 'S');
+        pdf.rect(cxHoras, y, dayColWidth, headerHeight, 'S');
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+        pdf.text('P', cxPlant + dayColWidth / 2, y + 10, { align: 'center' });
+        pdf.text('H', cxHoras + dayColWidth / 2, y + 10, { align: 'center' });
+
+        y += headerHeight;
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+      }
     }
-  }
 
-  pdf.setFontSize(8);
-  pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, bottom);
-  pdf.text('Sistema de Sobreaviso - EBSERH', pw - margin, bottom, { align: 'right' });
+    pdf.setFontSize(8);
+    pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, bottom);
+    pdf.text('Plantão Certo - EBSERH', pw - margin, bottom, { align: 'right' });
 
-  const base = team?.name?.toLowerCase().replace(/\s/g, '_') || 'equipe';
-  pdf.save(`escala-${base}-${schedule.month}-tabela.pdf`);
-};
-
-
-const exportMatrixXLSX = () => {
-  const [year, monthIndex] = schedule.month.split('-').map(Number);
-  const daysInMonth = new Date(year, monthIndex, 0).getDate();
-
-  const normPeople = teamPeople
-    .map(p => ({ ...p, id: String(p.id) }))
-    .filter(p => filteredPersonIds.length === 0 || filteredPersonIds.includes(String(p.id)));
-
-  const normSlots = timeSlots.map(ts => ({
-    ...ts,
-    id: String(ts.id),
-    description: ts.description,
-    startTime: ts.startTime,
-    endTime: ts.endTime
-  }));
-  const slotById = new Map(normSlots.map(s => [String(s.id), s]));
-
-  const getSlotFor = (pid, d) => {
-    for (const e of (schedule.entries || [])) {
-      if (Number(e.day) === d && String(e.personId) === String(pid)) return String(e.timeSlotId);
-    }
-    return null;
+    const base = team?.name?.toLowerCase().replace(/\s/g, '_') || 'equipe';
+    pdf.save(`escala-${base}-${schedule.month}-tabela.pdf`);
   };
 
-  const header1 = [
-    'Matrícula',
-    'Nome',
-    'Cargo/Esp.',
-    ...Array.from({ length: daysInMonth }, (_, i) => String(i + 1)),
-    'Qtd Plantões',
-    'Qtd Horas'
-  ];
+  const exportMatrixXLSX = () => {
+    const [year, monthIndex] = schedule.month.split('-').map(Number);
+    const daysInMonth = new Date(year, monthIndex, 0).getDate();
 
-  const header2 = [
-    '',
-    '',
-    '',
-    ...Array.from({ length: daysInMonth }, (_, i) => weekInitial(year, monthIndex, i + 1)),
-    '',
-    ''
-  ];
+    const normPeople = teamPeople
+      .map(p => ({ ...p, id: String(p.id) }))
+      .filter(p => filteredPersonIds.length === 0 || filteredPersonIds.includes(String(p.id)));
 
-  const data = [header1, header2];
+    const normSlots = timeSlots.map(ts => ({
+      ...ts,
+      id: String(ts.id),
+      description: ts.description,
+      startTime: ts.startTime,
+      endTime: ts.endTime
+    }));
+    const slotById = new Map(normSlots.map(s => [String(s.id), s]));
 
-  normPeople.forEach((p) => {
-    const row = [getMatricula(p), p.name, getCargoEsp(p)];
-    let plant = 0, horas = 0;
+    const getSlotFor = (pid, d) => {
+      for (const e of (schedule.entries || [])) {
+        if (Number(e.day) === d && String(e.personId) === String(pid)) return String(e.timeSlotId);
+      }
+      return null;
+    };
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const sid = getSlotFor(p.id, d);
-      const slot = sid ? slotById.get(String(sid)) : null;
-      row.push(slot ? shortCode(slot.description) : '');
-      if (slot) { plant += 1; horas += slotDurationHours(slot); }
+    const header1 = [
+      'Matrícula',
+      'Nome',
+      'Cargo/Esp.',
+      ...Array.from({ length: daysInMonth }, (_, i) => String(i + 1)),
+      'Qtd Plantões',
+      'Qtd Horas'
+    ];
+
+    const header2 = [
+      '',
+      '',
+      '',
+      ...Array.from({ length: daysInMonth }, (_, i) => weekInitial(year, monthIndex, i + 1)),
+      '',
+      ''
+    ];
+
+    const data = [header1, header2];
+
+    normPeople.forEach((p) => {
+      const row = [getMatricula(p), p.name, getCargoEsp(p)];
+      let plant = 0, horas = 0;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const sid = getSlotFor(p.id, d);
+        const slot = sid ? slotById.get(String(sid)) : null;
+        row.push(slot ? shortCode(slot.description) : '');
+        if (slot) { plant += 1; horas += slotDurationHours(slot); }
+      }
+      row.push(plant);
+      row.push(Number.isInteger(horas) ? horas : Number(horas.toFixed(1)));
+      data.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [
+      { wch: 14 },  
+      { wch: 28 },  
+      { wch: 24 }, 
+      ...Array.from({ length: daysInMonth }, () => ({ wch: 4 })), 
+      { wch: 12 },  
+      { wch: 10 }  
+    ];
+
+    const legendRows = [['Código', 'Descrição', 'Cor (HEX)']];
+    const seen = new Set();
+    for (const s of normSlots) {
+      const code = shortCode(s.description);
+      if (seen.has(code)) continue;
+      seen.add(code);
+      const hex = (COLOR_MAP[code]?.hex) || COLOR_MAP.DEFAULT.hex;
+      legendRows.push([code, s.description, hex]);
     }
-    row.push(plant);
-    row.push(Number.isInteger(horas) ? horas : Number(horas.toFixed(1)));
-    data.push(row);
-  });
+    const wsLegend = XLSX.utils.aoa_to_sheet(legendRows);
+    wsLegend['!cols'] = [{ wch: 10 }, { wch: 40 }, { wch: 12 }];
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [
-    { wch: 14 },  // Matrícula
-    { wch: 28 },  // Nome
-    { wch: 24 },  // Cargo/Esp.
-    ...Array.from({ length: daysInMonth }, () => ({ wch: 4 })), // Dias
-    { wch: 12 },  // Qtd Plantões
-    { wch: 10 }   // Qtd Horas
-  ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Matriz');
+    XLSX.utils.book_append_sheet(wb, wsLegend, 'Legenda');
 
-  // Legenda
-  const legendRows = [['Código', 'Descrição', 'Cor (HEX)']];
-  const seen = new Set();
-  for (const s of normSlots) {
-    const code = shortCode(s.description);
-    if (seen.has(code)) continue;
-    seen.add(code);
-    const hex = (COLOR_MAP[code]?.hex) || COLOR_MAP.DEFAULT.hex;
-    legendRows.push([code, s.description, hex]);
-  }
-  const wsLegend = XLSX.utils.aoa_to_sheet(legendRows);
-  wsLegend['!cols'] = [{ wch: 10 }, { wch: 40 }, { wch: 12 }];
+    const base = team?.name?.toLowerCase().replace(/\s/g, '_') || 'equipe';
+    XLSX.writeFile(wb, `escala-${base}-${schedule.month}-matriz.xlsx`);
+  };
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Matriz');
-  XLSX.utils.book_append_sheet(wb, wsLegend, 'Legenda');
-
-  const base = team?.name?.toLowerCase().replace(/\s/g, '_') || 'equipe';
-  XLSX.writeFile(wb, `escala-${base}-${schedule.month}-matriz.xlsx`);
-};
-
-
-  /* ---------- EXPORT: CALENDÁRIO (PDF) ---------- */
   const exportCalendarPDF = () => {
     const [year, monthIndex] = schedule.month.split('-').map(Number);
     const firstDay = new Date(year, monthIndex - 1, 1);
@@ -470,15 +444,15 @@ const exportMatrixXLSX = () => {
 
     const margin = 40;
     const topTitle = margin;
-    const contentTop = topTitle + 68; // espaço para HUF/UO/SEI
+    const contentTop = topTitle + 68; 
     const bottom = ph - margin;
 
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(24);
-    pdf.text('Escala de Sobreaviso', pw / 2, topTitle + 10, { align: 'center' });
+    const title = schedule.isOnCall ? 'Escala de Sobreaviso' : 'Escala de Plantão';
+    pdf.text(title, pw / 2, topTitle + 10, { align: 'center' });
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(12);
     pdf.text(`${team?.name || 'Equipe'} - ${getMonthName(schedule.month)}`, pw / 2, topTitle + 28, { align: 'center' });
 
-    // HUF / UO / SEI abaixo do título
     const metaLine = `HUF: ${labelHUF}      UO: ${labelUO}      Processo SEI: ${labelSEI}`;
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
     pdf.text(metaLine, pw / 2, topTitle + 46, { align: 'center' });
@@ -529,13 +503,12 @@ const exportMatrixXLSX = () => {
 
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
     pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, bottom);
-    pdf.text('Sistema de Sobreaviso - EBSERH', pw - margin, bottom, { align: 'right' });
+    pdf.text('Sistema de Plantão e Sobreaviso - EBSERH', pw - margin, bottom, { align: 'right' });
 
     const base = team?.name?.toLowerCase().replace(/\s/g, '_') || 'equipe';
     pdf.save(`escala-${base}-${schedule.month}-calendario.pdf`);
   };
 
-  // ===================== render =====================
   return (
     <motion.div
       layout
@@ -553,12 +526,19 @@ const exportMatrixXLSX = () => {
             <h3 className="font-bold text-gray-800 text-xl">{team?.name}</h3>
             <p className="text-sm text-gray-500">{getMonthName(schedule.month)}</p>
 
-            {/* HUF / UO / SEI no resumo */}
             <div className="text-xs text-gray-600 mt-1">
               <span className="mr-3"><b>HUF:</b> {labelHUF}</span>
               <span className="mr-3"><b>UO:</b> {labelUO}</span>
               <span><b>Processo SEI:</b> {labelSEI}</span>
             </div>
+
+            {schedule.isOnCall && (
+              <div className="mt-2">
+                <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                  Sobreaviso
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
               <div className="flex items-center gap-1">
@@ -612,7 +592,6 @@ const exportMatrixXLSX = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Botão Exportar com 3 opções */}
           <Dialog open={chooseExportOpen} onOpenChange={setChooseExportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -672,7 +651,6 @@ const exportMatrixXLSX = () => {
   );
 };
 
-/* ======================= PAGE (criar/editar) ======================= */
 const ScheduleManagement = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -685,21 +663,20 @@ const ScheduleManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
-  const [formData, setFormData] = useState({ month: '', teamId: '', entries: [], seiProcess: '' });
-   const [filters, setFilters] = useState({
-   month: 'all', // ← mostra TODAS as escalas inicialmente
-   teamId: isAdmin ? 'all' : (userTeamId || 'all'),
- });
+  const [formData, setFormData] = useState({ month: '', teamId: '', entries: [], seiProcess: '', isOnCall: false });
+  const [filters, setFilters] = useState({
+    month: 'all',
+    teamId: isAdmin ? 'all' : (userTeamId || 'all'),
+    onCall: 'all', 
+  });
   const [editorView, setEditorView] = useState('matrix');
   const [loading, setLoading] = useState(false);
 
-  // ====== Autofill modal state ======
   const [autoOpen, setAutoOpen] = useState(false);
   const [autoStartPersonId, setAutoStartPersonId] = useState('');
   const [autoHolidays, setAutoHolidays] = useState('');
-  // ==================================
 
-  useEffect(() => { loadData(); /* eslint-disable-line */ }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     try {
@@ -746,6 +723,7 @@ const ScheduleManagement = () => {
         teamId: String(schedule.teamId),
         entries: sanitizeEntries(schedule.entries),
         seiProcess: schedule.seiProcess || '',
+        isOnCall: Boolean(schedule.isOnCall), 
       });
     } else {
       setFormData({
@@ -753,6 +731,7 @@ const ScheduleManagement = () => {
         teamId: !isAdmin && userTeamId ? userTeamId : '',
         entries: [],
         seiProcess: '',
+        isOnCall: false, 
       });
     }
     setAutoStartPersonId('');
@@ -775,6 +754,7 @@ const ScheduleManagement = () => {
       teamId: isAdmin ? formData.teamId : userTeamId,
       seiProcess: formData.seiProcess?.trim() || null,
       entries: sanitizeEntries(formData.entries),
+      isOnCall: !!formData.isOnCall, 
     };
 
     if (!payload.teamId) {
@@ -823,26 +803,39 @@ const ScheduleManagement = () => {
     }
   }
 
-  const handleAssignment = (day, timeSlotId, personId) => {
+  const handleAssignment = (day, timeSlotId, personId, remove = false) => {
     setFormData(prev => {
-      const d = Number(day);
-      const tsId = String(timeSlotId);
-      const pId = personId != null ? String(personId) : null;
-
+      const d   = Number(day);
+      const ts  = String(timeSlotId);
+      const pid = personId != null ? String(personId) : null;
       const next = [...prev.entries];
-      const idx = next.findIndex(e => Number(e.day) === d && String(e.timeSlotId) === tsId);
 
-      if (pId) {
-        if (idx > -1) next[idx] = { ...next[idx], personId: pId };
-        else next.push({ day: d, timeSlotId: tsId, personId: pId });
-      } else if (idx > -1) {
-        next.splice(idx, 1);
+      if (remove && pid) {
+        const idx = next.findIndex(e =>
+          Number(e.day) === d &&
+          String(e.timeSlotId) === ts &&
+          String(e.personId) === pid
+        );
+        if (idx > -1) next.splice(idx, 1);
+        return { ...prev, entries: next };
       }
+
+      if (!pid) return prev; 
+
+      const idxByPersonDay = next.findIndex(e =>
+        Number(e.day) === d && String(e.personId) === pid
+      );
+
+      if (idxByPersonDay > -1) {
+        next[idxByPersonDay] = { ...next[idxByPersonDay], timeSlotId: ts };
+      } else {
+        next.push({ day: d, timeSlotId: ts, personId: pid });
+      }
+
       return { ...prev, entries: next };
     });
   };
 
-  // quando oculta pessoas, limpa os lançamentos delas
   const handlePeopleVisibleChange = (selectedIds) => {
     setFormData(prev => ({
       ...prev,
@@ -855,11 +848,11 @@ const ScheduleManagement = () => {
 
   const filteredSchedules = schedules.filter(schedule => {
     const monthMatch = filters.month === 'all' || schedule.month === filters.month;
-    const teamMatch = filters.teamId === 'all' || String(schedule.teamId) === String(filters.teamId);
-    return monthMatch && teamMatch;
+    const teamMatch  = filters.teamId === 'all' || String(schedule.teamId) === String(filters.teamId);
+    const onCallMatch = filters.onCall === 'all' || schedule.isOnCall === (filters.onCall === 'true');
+    return monthMatch && teamMatch && onCallMatch;
   });
 
-  /* ======================= AUTO-PREENCHER (escadinha) ======================= */
   const openAutoDialog = (e) => {
     e?.preventDefault?.(); e?.stopPropagation?.();
     setAutoOpen(true);
@@ -873,7 +866,6 @@ const ScheduleManagement = () => {
     const [year, monthIndex] = formData.month.split('-').map(Number);
     const daysInMonth = new Date(year, monthIndex, 0).getDate();
 
-    // slots por sigla
     const slotSN = timeSlots.find(s => shortCode(s.description) === 'SN');
     const slotSD = timeSlots.find(s => shortCode(s.description) === 'SD');
 
@@ -885,7 +877,6 @@ const ScheduleManagement = () => {
       toast({ title: 'Nenhum horário "SD" encontrado (fins de semana terão apenas SN)', variant: 'default' });
     }
 
-    // feriados -> usuário informa só os "dias": "7,12,25"
     const holidayDays = new Set(
       autoHolidays
         .split(',')
@@ -901,7 +892,6 @@ const ScheduleManagement = () => {
     const n = personIds.length;
     if (n === 0) return;
 
-    // Início pela pessoa selecionada (se não selecionou, começa no primeiro)
     let base = 0;
     if (autoStartPersonId) {
       const found = personIds.indexOf(String(autoStartPersonId));
@@ -912,16 +902,14 @@ const ScheduleManagement = () => {
 
     for (let d = 1; d <= daysInMonth; d++) {
       if (isWeOrHoliday(d) && slotSD) {
-        // 2 plantões no mesmo dia (SD / SN) para pessoas consecutivas diferentes
         const p1 = personIds[base % n];
         const p2 = personIds[(base + 1) % n];
 
         newEntries.push({ day: d, timeSlotId: String(slotSD.id), personId: p1 });
         newEntries.push({ day: d, timeSlotId: String(slotSN.id), personId: p2 });
 
-        base = (base + 2) % n; // avança 2 posições -> garante Sáb(A,B), Dom(C,D)
+        base = (base + 2) % n; 
       } else {
-        // dia útil: apenas SN e avança 1
         const p = personIds[base % n];
         newEntries.push({ day: d, timeSlotId: String(slotSN.id), personId: p });
         base = (base + 1) % n;
@@ -929,10 +917,9 @@ const ScheduleManagement = () => {
     }
 
     setFormData(prev => ({ ...prev, entries: newEntries }));
-    toast({ title: 'Preenchido automaticamente (escadinha) ✔️' });
+    toast({ title: 'Preenchido automaticamente ✔️' });
     setAutoOpen(false);
   };
-  /* ======================================================================== */
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -961,6 +948,18 @@ const ScheduleManagement = () => {
                 {teams.map(team => <SelectItem key={String(team.id)} value={String(team.id)}>{team.name}</SelectItem>)}
               </SelectContent>
             </Select>
+
+            <Select
+              value={filters.onCall}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, onCall: value }))}
+            >
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filtrar por sobreaviso" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="true">Apenas sobreaviso</SelectItem>
+                <SelectItem value="false">Sem sobreaviso</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -970,11 +969,10 @@ const ScheduleManagement = () => {
               </Button>
             </DialogTrigger>
 
-            {/* MODAL MAIOR */}
             <DialogContent className="max-w-[98vw] w-[1600px] max-h-[92vh] overflow-y-auto">
               <DialogHeader>
-  <DialogTitle>{editingSchedule ? 'Editar' : 'Nova'} Escala</DialogTitle>
-</DialogHeader>
+                <DialogTitle>{editingSchedule ? 'Editar' : 'Nova'} Escala</DialogTitle>
+              </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-6 p-2">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1005,7 +1003,6 @@ const ScheduleManagement = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {/* NOVO: Processo SEI */}
                   <div className="space-y-2">
                     <Label htmlFor="seiProcess">Processo SEI</Label>
                     <input
@@ -1016,6 +1013,18 @@ const ScheduleManagement = () => {
                       placeholder="Ex.: 23000.000000/2025-11"
                       className="w-full px-3 py-2 border rounded-md"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="isOnCall">Sobreaviso</Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="isOnCall"
+                      checked={!!formData.isOnCall}
+                      onCheckedChange={(v) => setFormData({ ...formData, isOnCall: !!v })}
+                    />
+                    <span className="text-sm text-gray-600">Escala de sobreaviso</span>
                   </div>
                 </div>
 
@@ -1054,9 +1063,8 @@ const ScheduleManagement = () => {
                       </Button>
                     </div>
 
-                    {/* Remonto o editor ao mudar equipe para listar TODOS por padrão */}
                     <ScheduleMatrixEditor
-                      key={`matrix-${formData.teamId}`}   // <- garante linhas da equipe visíveis por padrão
+                      key={`matrix-${formData.teamId}`}   
                       month={formData.month}
                       entries={formData.entries}
                       people={filteredPeople.map(p => ({ ...p, id: String(p.id) }))}
@@ -1075,7 +1083,6 @@ const ScheduleManagement = () => {
                 </div>
               </form>
 
-              {/* ===== Modal interno: Auto-preencher ===== */}
               <Dialog open={autoOpen} onOpenChange={setAutoOpen}>
                 <DialogContent
                   className="max-w-[560px]"
@@ -1086,7 +1093,6 @@ const ScheduleManagement = () => {
 
                   <div className="grid gap-3">
                     <div className="grid grid-cols-2 gap-3">
-                      {/* SELEÇÃO DE COLABORADOR INICIAL */}
                       <div>
                         <Label>Começar por</Label>
                         <Select value={autoStartPersonId} onValueChange={setAutoStartPersonId}>
@@ -1097,7 +1103,7 @@ const ScheduleManagement = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-gray-500 mt-1">Define quem inicia a escadinha.</p>
+                        <p className="text-xs text-gray-500 mt-1">Define quem inicia a escala.</p>
                       </div>
 
                       <div>
@@ -1107,10 +1113,10 @@ const ScheduleManagement = () => {
                           placeholder="ex: 7, 12, 25"
                           value={autoHolidays}
                           onChange={(e) => setAutoHolidays(e.target.value)}
-                          className="w-full px-3 py-2 border rounded-md"
+                          className="w-full px-3 py-[0.45rem] border rounded-md"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Digite apenas os <b>dias</b> separados por vírgula. Sáb/Dom já contam automaticamente.
+                          Digite apenas os <b>dias</b> separados por vírgula.
                         </p>
                       </div>
                     </div>
@@ -1139,7 +1145,6 @@ const ScheduleManagement = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              {/* ===== /Auto-preencher ===== */}
             </DialogContent>
           </Dialog>
         </div>

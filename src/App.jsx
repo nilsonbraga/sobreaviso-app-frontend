@@ -1,5 +1,4 @@
-// [ROUTER_MODE] App.jsx não é mais o entrypoint. O app agora sobe via RouterProvider em src/main.jsx.
-// src/App.jsx
+
 import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
@@ -14,16 +13,16 @@ function App() {
   const hydrate = useAuth(s => s.hydrate);
 
   useEffect(() => {
-    hydrate(); // lê auth_user/auth_token do localStorage e agenda auto-refresh
+    hydrate(); 
   }, [hydrate]);
 
   return (
     <>
       <Helmet>
-        <title>Sistema de Sobreaviso Hospitalar</title>
+        <title>Sistema de Plantão Hospitalar</title>
         <meta
           name="description"
-          content="Gerencie escalas de sobreaviso do hospital de forma eficiente e organizada"
+          content="Gerencie escalas de plantão e sobreaviso do hospital de forma eficiente e organizada"
         />
       </Helmet>
 

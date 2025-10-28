@@ -20,17 +20,15 @@ const SectorManagement = () => {
   const [sectors, setSectors] = useState([]);
   const [hospitals, setHospitals] = useState([]);
 
-  // modal
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSector, setEditingSector] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
 
-  // ui
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState('cards'); // 'cards' | 'table'
+  const [view, setView] = useState('cards'); 
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState('name'); // 'name' | 'hospital' | 'createdAt'
-  const [sortDir, setSortDir] = useState('asc');   // 'asc'  | 'desc'
+  const [sortKey, setSortKey] = useState('name'); 
+  const [sortDir, setSortDir] = useState('asc');   
 
   useEffect(() => { loadData(); }, []);
 
@@ -54,7 +52,6 @@ const SectorManagement = () => {
     (h?.sigla || h?.name || h?.huf || h?.uo || '')?.toString() || '';
 
   const findHospitalFor = (sector) => {
-    // Preferir sector.hospital (se backend já populou), senão buscar via hospitalId
     if (sector?.hospital) return sector.hospital;
     if (!sector?.hospitalId) return null;
     return hospitals.find(h => String(h.id) === String(sector.hospitalId)) || null;
@@ -151,7 +148,6 @@ const SectorManagement = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {/* Cabeçalho + controles */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 className="text-3xl font-bold text-gray-800">Gerenciar Serviços</h2>
@@ -218,7 +214,6 @@ const SectorManagement = () => {
                       <SelectValue placeholder="Selecione um hospital (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Evite value="" no Radix SelectItem */}
                       <SelectItem value={NONE}>— Sem hospital —</SelectItem>
                       {hospitals.map(h => (
                         <SelectItem key={String(h.id)} value={String(h.id)}>
@@ -243,14 +238,12 @@ const SectorManagement = () => {
         </div>
       </div>
 
-      {/* Alternador de visualização */}
       <Tabs value={view} onValueChange={setView} className="space-y-4">
         <TabsList>
           <TabsTrigger value="cards" className="gap-1"><LayoutGrid className="w-4 h-4" /> Cards</TabsTrigger>
           <TabsTrigger value="table" className="gap-1"><Table className="w-4 h-4" /> Tabela</TabsTrigger>
         </TabsList>
 
-        {/* CARDS */}
         <TabsContent value="cards">
           {loading ? (
             <div className="text-sm text-gray-500">Carregando serviços...</div>
@@ -301,7 +294,6 @@ const SectorManagement = () => {
           )}
         </TabsContent>
 
-        {/* TABELA */}
         <TabsContent value="table">
           <div className="bg-white rounded-2xl shadow p-4">
             {loading ? (
